@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Runtime data
+storage/
+apps/api/storage/
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+bun-debug.log*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Test / coverage
+coverage/
