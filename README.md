@@ -153,6 +153,36 @@ tombol X atau `Esc`.
 - Menghapus item memakai konfirmasi inline; pesan 409 dari API ditampilkan di
   panel bila item masih dipakai.
 
+## Endpoint Perangkat (Fase 2)
+
+| Method | Path | Akses |
+|---|---|---|
+| GET | `/devices` | `devices:read` — daftar ringan untuk marker peta |
+| GET | `/devices/:id` | `devices:read` — detail + model + tipe |
+| POST | `/devices` | `devices:write` |
+| PATCH | `/devices/:id` | `devices:write` |
+| DELETE | `/devices/:id` | `devices:delete` |
+
+Field create/update mengikuti ERD: `name`, `deviceModelId`, `ipAddress`,
+`latitude`, `longitude`, `parentId`, `portUsed`, `description`, `status`, dan
+`installedAt`. Aturan validasi:
+
+- `ipAddress` wajib dan valid (IPv4/IPv6) bila Device Type `requires_ip`.
+  IP yang diisi untuk tipe lain juga tetap harus valid.
+- `portUsed` tidak boleh melebihi kapasitas model: PON capacity untuk OLT, port
+  capacity untuk tipe lain.
+- `latitude` -90..90 dan `longitude` -180..180. `parentId` harus perangkat yang
+  ada dan tidak boleh menunjuk dirinya sendiri; menghapus induk membuat
+  `parent_id` anak menjadi `null`.
+- Setiap create/update/delete dicatat ke `device_logs` dengan `changed_by` =
+  email user. Log delete dipertahankan sebagai audit dengan `device_id = null`
+  setelah perangkat dihapus.
+- Menghapus perangkat yang masih dipakai kabel menghasilkan **409** dengan pesan
+  yang menyebut jumlah kabel (keputusan cascade final dibahas di langkah 2.5).
+- `GET /devices` hanya mengembalikan id, nama, koordinat, status, dan
+  type/icon — bukan seluruh kolom — agar tetap ringan untuk peta. Diuji dengan
+  1.000 perangkat.
+
 ## 2FA
 
 - Secret TOTP dienkripsi AES-256-GCM dengan kunci `TOTP_ENCRYPTION_KEY`

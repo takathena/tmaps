@@ -1,0 +1,70 @@
+import { isIP } from "node:net";
+import { usesPonCapacity } from "./catalog-rules.ts";
+
+/**
+ * Konteks model + tipe yang dibutuhkan untuk memvalidasi penempatan perangkat.
+ * Dipakai API dan unit test agar aturan IP/kapasitas tidak tersebar.
+ */
+export type DeviceModelCapacity = {
+  typeName: string;
+  category: string;
+  requiresIp: boolean;
+  portCapacity: number | null;
+  ponCapacity: number | null;
+};
+
+export type DevicePlacementInput = {
+  ipAddress: string | null;
+  portUsed: number;
+};
+
+export type DeviceCapacityInfo = {
+  usesPon: boolean;
+  label: string;
+  capacity: number | null;
+};
+
+export function deviceCapacityInfo(model: DeviceModelCapacity): DeviceCapacityInfo {
+  const usesPon = usesPonCapacity({ name: model.typeName, category: model.category });
+
+  return {
+    usesPon,
+    label: usesPon ? "PON" : "Port",
+    capacity: usesPon ? model.ponCapacity : model.portCapacity,
+  };
+}
+
+/**
+ * Mengembalikan pesan kesalahan bila IP/port tidak sesuai aturan, atau null.
+ * - IP wajib dan valid bila Device Type `requires_ip`.
+ * - IP yang diisi (walau opsional) harus valid.
+ * - `port_used` tidak boleh melebihi kapasitas model (port atau PON).
+ */
+export function devicePlacementError(
+  model: DeviceModelCapacity,
+  input: DevicePlacementInput,
+): string | null {
+  if (input.ipAddress !== null) {
+    if (input.ipAddress.trim().length === 0 || isIP(input.ipAddress.trim()) === 0) {
+      return "IP address tidak valid.";
+    }
+  } else if (model.requiresIp) {
+    return "IP address wajib diisi untuk tipe perangkat ini.";
+  }
+
+  if (!Number.isInteger(input.portUsed) || input.portUsed < 0) {
+    return "Port terpakai harus bilangan bulat dan tidak boleh negatif.";
+  }
+
+  const { label, capacity } = deviceCapacityInfo(model);
+
+  if (capacity === null) {
+    return "Kapasitas model belum diisi di katalog.";
+  }
+
+  if (input.portUsed > capacity) {
+    return `${label} terpakai (${input.portUsed}) melebihi kapasitas model (${capacity}).`;
+  }
+
+  return null;
+}

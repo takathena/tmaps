@@ -278,9 +278,9 @@ export const deviceLogs = pgTable(
   "device_logs",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    deviceId: uuid("device_id")
-      .notNull()
-      .references(() => devices.id, { onDelete: "cascade" }),
+    // Tetap menyimpan jejak audit saat perangkat dihapus. Histori milik
+    // perangkat yang masih ada tetap bisa difilter lewat device_id.
+    deviceId: uuid("device_id").references(() => devices.id, { onDelete: "set null" }),
     action: text("action").notNull(),
     changedBy: text("changed_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
