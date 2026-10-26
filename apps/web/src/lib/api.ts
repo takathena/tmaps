@@ -103,6 +103,18 @@ export type DeviceMonitoringConfig = {
   intervalSeconds: number;
 };
 
+export type DeviceTag = {
+  id: string;
+  name: string;
+};
+
+export type DeviceLogEntry = {
+  id: string;
+  action: string;
+  changedBy: string;
+  createdAt: string;
+};
+
 export type DeviceDetail = {
   id: string;
   name: string;
@@ -134,6 +146,7 @@ export type DeviceDetail = {
     icon: string;
   };
   monitoring: DeviceMonitoringConfig | null;
+  tags: DeviceTag[];
 };
 
 export type DeviceCreateInput = {
@@ -317,6 +330,17 @@ export const api = {
 
   getDevices: () => request<{ devices: DeviceSummary[] }>("/devices"),
   getDevice: (id: string) => request<{ device: DeviceDetail }>(`/devices/${id}`),
+  getDeviceLogs: (id: string) =>
+    request<{ logs: DeviceLogEntry[] }>(`/devices/${id}/logs`),
+  addDeviceTag: (id: string, name: string) =>
+    request<{ tags: DeviceTag[] }>(`/devices/${id}/tags`, {
+      method: "POST",
+      body: { name },
+    }),
+  removeDeviceTag: (id: string, tagId: string) =>
+    request<{ tags: DeviceTag[] }>(`/devices/${id}/tags/${tagId}`, {
+      method: "DELETE",
+    }),
   createDevice: (body: DeviceCreateInput) =>
     request<{ device: DeviceDetail }>("/devices", { method: "POST", body }),
   updateDevice: (id: string, body: DeviceUpdateInput) =>

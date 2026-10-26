@@ -17,6 +17,7 @@ import {
   DeviceFormPanel,
   type DeviceLocation,
 } from "./DeviceFormPanel";
+import { DeviceSidebar } from "./DeviceSidebar";
 import { MainMenu } from "./MainMenu";
 import { MapView } from "./MapView";
 import { NotificationBell } from "./NotificationBell";
@@ -80,6 +81,7 @@ function moveCableEndpoint(
 
 export function MapShell({ user, onLogout }: MapShellProps) {
   const canWriteDevices = Boolean(user.role.permissions.devices?.write);
+  const canReadDevices = Boolean(user.role.permissions.devices?.read);
   const canWriteCables = Boolean(user.role.permissions.cables?.write);
   const canReadCables = Boolean(user.role.permissions.cables?.read);
 
@@ -93,6 +95,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
   const [cablesError, setCablesError] = useState<string | null>(null);
   const [createLocation, setCreateLocation] = useState<DeviceLocation | null>(null);
   const [editing, setEditing] = useState<EditingDevice | null>(null);
+  const [sidebarId, setSidebarId] = useState<string | null>(null);
   const [editingCable, setEditingCable] = useState<EditingCable | null>(null);
   const [cableStartId, setCableStartId] = useState<string | null>(null);
   const [cableMidpoints, setCableMidpoints] = useState<CablePathPoint[]>([]);
@@ -147,9 +150,11 @@ export function MapShell({ user, onLogout }: MapShellProps) {
   }
 
   function closeDeviceEditor() {
+    const returnId = editing?.id ?? null;
     if (createLocation) setActiveTool("select");
     setCreateLocation(null);
     setEditing(null);
+    if (returnId && canReadDevices) setSidebarId(returnId);
   }
 
   function closeCableEditor() {
@@ -162,6 +167,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
   function openCatalog(tab: CatalogTab) {
     setCreateLocation(null);
     setEditing(null);
+    setSidebarId(null);
     setCableDraft(null);
     setEditingCable(null);
     resetCableDrawing();
@@ -182,6 +188,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
     if (tool !== "select") {
       setEditing(null);
       setEditingCable(null);
+      setSidebarId(null);
     }
     if (tool !== "add-cable") {
       setCableDraft(null);
@@ -190,6 +197,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
       setCatalogTab(null);
       setCreateLocation(null);
       setEditing(null);
+      setSidebarId(null);
       setEditingCable(null);
       setCableDraft(null);
       resetCableDrawing();
@@ -209,6 +217,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
       setCatalogTab(null);
       setEditing(null);
       setEditingCable(null);
+      setSidebarId(null);
       setCreateLocation({ latitude, longitude });
       return;
     }
@@ -279,29 +288,15 @@ export function MapShell({ user, onLogout }: MapShellProps) {
       return;
     }
 
-    if (activeTool !== "select" || !canWriteDevices) return;
+    if (activeTool !== "select" || !canReadDevices) return;
 
     setCatalogTab(null);
     setCreateLocation(null);
+    setEditing(null);
     setEditingCable(null);
-    setEditing({ id, device: null, loading: true, error: null });
-
-    api
-      .getDevice(id)
-      .then((response) => {
-        setEditing((current) =>
-          current?.id === id
-            ? { id, device: response.device, loading: false, error: null }
-            : current,
-        );
-      })
-      .catch((error) => {
-        setEditing((current) =>
-          current?.id === id
-            ? { ...current, loading: false, error: errorMessage(error) }
-            : current,
-        );
-      });
+    setCableDraft(null);
+    resetCableDrawing();
+    setSidebarId(id);
   }
 
   function handleCableSelect(id: string) {
@@ -310,6 +305,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
     setCatalogTab(null);
     setCreateLocation(null);
     setEditing(null);
+    setSidebarId(null);
     setCableDraft(null);
     resetCableDrawing();
     setEditingCable({ id, cable: null, loading: true, error: null });
@@ -336,6 +332,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
     setDevices((rows) => sortDevices([...rows, toSummary(device)]));
     setCreateLocation(null);
     setEditing(null);
+    setSidebarId(null);
     setActiveTool("select");
   }
 
@@ -346,11 +343,13 @@ export function MapShell({ user, onLogout }: MapShellProps) {
       ),
     );
     setEditing(null);
+    setSidebarId(device.id);
   }
 
   function handleDeleted(id: string) {
     setDevices((rows) => rows.filter((row) => row.id !== id));
     setEditing(null);
+    setSidebarId(null);
   }
 
   function handleCableCreated(cable: CableDetail) {
@@ -448,7 +447,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
         activeTool={activeTool}
         devices={devices}
         cables={cables}
-        selectedDeviceId={editingId}
+        selectedDeviceId={editingId ?? sidebarId}
         selectedCableId={editingCableId}
         cableStartDeviceId={previewStart?.id ?? null}
         cablePreviewPath={cablePreviewPath}
@@ -472,6 +471,26 @@ export function MapShell({ user, onLogout }: MapShellProps) {
         <div className="panel overlay-top-right">
           <NotificationBell />
         </div>
+
+        {sidebarId && !editing ? (
+          <DeviceSidebar
+            key={sidebarId}
+            deviceId={sidebarId}
+            user={user}
+            onClose={() =>
+              setSidebarId((current) => (current === sidebarId ? null : current))
+            }
+            onEdit={(device) => {
+              setSidebarId(null);
+              setEditing({
+                id: device.id,
+                device,
+                loading: false,
+                error: null,
+              });
+            }}
+          />
+        ) : null}
 
         {catalogTab ? (
           <CatalogPanel

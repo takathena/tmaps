@@ -1,4 +1,4 @@
-import { count, eq, or } from "drizzle-orm";
+import { and, count, desc, eq, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -7,9 +7,11 @@ import {
   cables,
   deviceLogs,
   deviceModels,
+  deviceTags,
   deviceTypes,
   devices,
   monitoringConfig,
+  tags,
 } from "../db/schema.ts";
 import {
   deviceMonitoringError,
@@ -91,6 +93,10 @@ const updateDeviceSchema = z
   .object(deviceFields)
   .partial()
   .refine((value) => Object.keys(value).length > 0, "Tidak ada perubahan yang dikirim.");
+
+const tagSchema = z.object({
+  name: text("Nama tag", 40),
+});
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -293,7 +299,31 @@ async function findDeviceDetail(id: string) {
     throw new HTTPException(404, { message: "Perangkat tidak ditemukan." });
   }
 
-  return toDeviceDetail(row);
+  return {
+    ...toDeviceDetail(row),
+    tags: await findDeviceTags(id),
+  };
+}
+
+async function findDeviceTags(deviceId: string) {
+  return db
+    .select({ id: tags.id, name: tags.name })
+    .from(deviceTags)
+    .innerJoin(tags, eq(deviceTags.tagId, tags.id))
+    .where(eq(deviceTags.deviceId, deviceId))
+    .orderBy(tags.name);
+}
+
+async function assertDeviceExists(id: string): Promise<void> {
+  const [existing] = await db
+    .select({ id: devices.id })
+    .from(devices)
+    .where(eq(devices.id, id))
+    .limit(1);
+
+  if (!existing) {
+    throw new HTTPException(404, { message: "Perangkat tidak ditemukan." });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -324,6 +354,119 @@ devicesRoutes.get("/", requirePermission("devices", "read"), async (c) => {
 
   return c.json({ devices: rows });
 });
+
+devicesRoutes.get("/:id/logs", requirePermission("devices", "read"), async (c) => {
+  const id = uuidParam(c.req.param("id"), "Perangkat");
+  await assertDeviceExists(id);
+
+  const rows = await db
+    .select({
+      id: deviceLogs.id,
+      action: deviceLogs.action,
+      changedBy: deviceLogs.changedBy,
+      createdAt: deviceLogs.createdAt,
+    })
+    .from(deviceLogs)
+    .where(eq(deviceLogs.deviceId, id))
+    .orderBy(desc(deviceLogs.createdAt))
+    .limit(50);
+
+  return c.json({ logs: rows });
+});
+
+devicesRoutes.post(
+  "/:id/tags",
+  requirePermission("devices", "write"),
+  jsonBody(tagSchema),
+  async (c) => {
+    const id = uuidParam(c.req.param("id"), "Perangkat");
+    const data = c.req.valid("json");
+    const user = c.get("user");
+
+    await assertDeviceExists(id);
+
+    await db.transaction(async (tx) => {
+      // Tag dicocokkan tanpa membedakan huruf besar/kecil, sesuai unique
+      // index lower(name) di database. Nama asli tag pertama dipertahankan.
+      const [existing] = await tx
+        .select({ id: tags.id })
+        .from(tags)
+        .where(sql`lower(${tags.name}) = lower(${data.name})`)
+        .limit(1);
+
+      let tagId = existing?.id;
+
+      if (!tagId) {
+        const [created] = await tx
+          .insert(tags)
+          .values({ name: data.name })
+          .onConflictDoNothing()
+          .returning({ id: tags.id });
+
+        tagId = created?.id;
+
+        if (!tagId) {
+          // Bisa terjadi bila dua request membuat tag yang sama bersamaan.
+          const [fallback] = await tx
+            .select({ id: tags.id })
+            .from(tags)
+            .where(sql`lower(${tags.name}) = lower(${data.name})`)
+            .limit(1);
+          tagId = fallback?.id;
+        }
+      }
+
+      if (!tagId) {
+        throw new HTTPException(500, { message: "Gagal menyimpan tag." });
+      }
+
+      const attached = await tx
+        .insert(deviceTags)
+        .values({ deviceId: id, tagId })
+        .onConflictDoNothing()
+        .returning({ tagId: deviceTags.tagId });
+
+      if (attached.length > 0) {
+        await tx.insert(deviceLogs).values({
+          deviceId: id,
+          action: "update",
+          changedBy: user.email,
+        });
+      }
+    });
+
+    return c.json({ tags: await findDeviceTags(id) });
+  },
+);
+
+devicesRoutes.delete(
+  "/:id/tags/:tagId",
+  requirePermission("devices", "write"),
+  async (c) => {
+    const id = uuidParam(c.req.param("id"), "Perangkat");
+    const tagId = uuidParam(c.req.param("tagId"), "Tag");
+    const user = c.get("user");
+
+    await assertDeviceExists(id);
+
+    await db.transaction(async (tx) => {
+      const removed = await tx
+        .delete(deviceTags)
+        .where(and(eq(deviceTags.deviceId, id), eq(deviceTags.tagId, tagId)))
+        .returning({ tagId: deviceTags.tagId });
+
+      if (removed.length > 0) {
+        await tx.insert(deviceLogs).values({
+          deviceId: id,
+          action: "update",
+          changedBy: user.email,
+        });
+      }
+    });
+
+    return c.json({ tags: await findDeviceTags(id) });
+  },
+);
 
 devicesRoutes.get("/:id", requirePermission("devices", "read"), async (c) => {
   const id = uuidParam(c.req.param("id"), "Perangkat");

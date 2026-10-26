@@ -58,7 +58,8 @@ button {
 
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
@@ -1045,6 +1046,455 @@ select:focus-visible {
   overflow-y: auto;
 }
 
+/* ---------- Sidebar detail perangkat ---------- */
+
+.device-sidebar {
+  position: absolute;
+  top: 76px;
+  right: 16px;
+  z-index: 24;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, calc(100vw - 32px));
+  max-height: calc(100vh - 92px);
+  overflow: hidden;
+  animation: sidebar-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.device-sidebar[data-closing='true'] {
+  pointer-events: none;
+  animation: sidebar-out 160ms ease-in forwards;
+}
+
+@keyframes sidebar-in {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sidebar-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+
+.device-sidebar-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.device-sidebar-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: var(--radius-button);
+  background: rgba(68, 101, 233, 0.1);
+  color: var(--color-accent);
+}
+
+.device-sidebar-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-sidebar-heading h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.device-sidebar-heading p {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.device-sidebar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0;
+  margin: -4px -4px 0 0;
+}
+
+.device-sidebar-actions .icon-button {
+  width: 32px;
+  height: 32px;
+}
+
+.device-sidebar-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-section-title {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.sidebar-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.sidebar-info-row {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.sidebar-info-row dt {
+  color: var(--color-text-secondary);
+}
+
+.sidebar-info-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.device-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.device-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-status-unmonitored);
+}
+
+.device-status[data-status='active'] .device-status-dot {
+  background: var(--color-status-up);
+}
+
+.device-status[data-status='offline'] .device-status-dot {
+  background: var(--color-status-down);
+}
+
+.sidebar-port-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.sidebar-port-value {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-port-label {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.sidebar-meter {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-canvas);
+}
+
+.sidebar-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-accent);
+  transition: width 200ms ease;
+}
+
+.sidebar-monitoring {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-bg-canvas);
+}
+
+.sidebar-monitoring > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--color-text-secondary);
+}
+
+.sidebar-monitoring div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-monitoring strong {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.sidebar-monitoring span {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.sidebar-description textarea {
+  min-height: 88px;
+}
+
+.sidebar-description-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.sidebar-muted {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sidebar-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.sidebar-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-accent);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 2px 2px 2px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-canvas);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tag-color-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.tag-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-remove {
+  display: grid;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.tag-remove:hover:not(:disabled) {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.tag-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tag-form {
+  display: flex;
+  gap: 8px;
+}
+
+.tag-form input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-bg-panel);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 120ms ease;
+}
+
+.tag-form input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.tag-form input:focus {
+  border-color: var(--color-accent);
+  outline: 2px solid rgba(68, 101, 233, 0.24);
+  outline-offset: 1px;
+}
+
+.tag-form input:disabled {
+  background: var(--color-bg-canvas);
+  cursor: not-allowed;
+}
+
+.tag-add-button {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.sidebar-gallery-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-button);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sidebar-gallery-empty > svg {
+  flex: 0 0 auto;
+  color: var(--color-accent);
+}
+
+.sidebar-inline-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.sidebar-history-error {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.device-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.device-history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.history-icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+}
+
+.history-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.history-action {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.history-meta {
+  overflow-wrap: anywhere;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.history-time {
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
 .device-form {
   display: flex;
   flex-direction: column;
@@ -1478,6 +1928,37 @@ select:focus-visible {
   cursor: pointer;
 }
 
+.field textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-bg-panel);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+  transition: border-color 120ms ease;
+}
+
+.field textarea::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.field textarea:focus {
+  border-color: var(--color-accent);
+  outline: 2px solid rgba(68, 101, 233, 0.24);
+  outline-offset: 1px;
+}
+
+.field textarea:disabled {
+  background: var(--color-bg-canvas);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
 .field input::placeholder {
   color: var(--color-text-secondary);
 }
@@ -1746,7 +2227,8 @@ select:focus-visible {
 
 @media (max-width: 720px) {
   .catalog-panel,
-  .device-panel {
+  .device-panel,
+  .device-sidebar {
     top: 72px;
     left: 12px;
     right: 12px;
@@ -1777,6 +2259,11 @@ select:focus-visible {
     max-height: calc(100vh - 140px);
   }
 
+  .device-sidebar {
+    top: 68px;
+    max-height: calc(100vh - 140px);
+  }
+
   .catalog-header {
     padding: 12px 12px 10px;
   }
@@ -1787,6 +2274,14 @@ select:focus-visible {
 
   .catalog-body,
   .device-panel-body {
+    padding: 12px;
+  }
+
+  .device-sidebar-header {
+    padding: 12px;
+  }
+
+  .device-sidebar-body {
     padding: 12px;
   }
 
@@ -1845,8 +2340,20 @@ select:focus-visible {
   .device-marker,
   .tool-button::after,
   .field input,
-  .field select {
+  .field select,
+  .field textarea,
+  .tag-form input,
+  .sidebar-meter-fill {
     transition: none;
+  }
+
+  .device-sidebar {
+    animation: none;
+  }
+
+  .device-sidebar[data-closing='true'] {
+    opacity: 0;
+    animation: none;
   }
 
   .device-marker:hover {

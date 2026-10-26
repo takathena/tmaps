@@ -195,12 +195,43 @@ meminta tipe kabel, core terpakai, dan panjang.
   jumlah kabel. Ini keputusan final untuk v1: hapus kabel lebih dulu, bukan
   cascade.
 
+### Sidebar detail perangkat
+
+Klik marker perangkat pada tool Select untuk membuka sidebar yang meluncur dari
+kanan. Sidebar hanya menimpa peta (layout tidak bergeser), lonceng notifikasi di
+kanan atas tetap terlihat, dan peta di luar area sidebar tetap bisa digeser,
+di-zoom, atau diklik.
+
+Isi sidebar mengikuti flow #10:
+
+- **Informasi umum** — vendor, model, tipe, IP, status, dan tanggal instalasi.
+- **Kapasitas port** — PON untuk perangkat OLT, port untuk tipe lain, beserta
+  nilai terpakai dan bar kapasitas.
+- **Monitoring** — Fase 2 selalu menampilkan **Belum dimonitor** karena mesin
+  ping baru aktif di Fase 3. Interval yang sudah disiapkan tetap ditampilkan
+  sebagai keterangan.
+- **Deskripsi** — dapat diubah langsung oleh Admin/Teknisi dan disimpan lewat
+  `PATCH /devices/:id`. Viewer hanya melihat teks.
+- **Tag** — tambah lewat input bebas atau hapus lewat tombol pada chip. Tag baru
+  dibuat otomatis; pencocokan tidak membedakan huruf besar/kecil sehingga
+  `Sidoarjo`, `sidoarjo`, dan `SIDOARJO` memakai baris tag yang sama. Warna chip
+  dipilih deterministik dari palet tag style guide, bukan merah.
+- **Galeri** — placeholder sampai upload gambar dikerjakan di langkah 2.7.
+- **Riwayat** — 50 entri terbaru `device_logs` (aksi, user, waktu).
+
+Tombol **Edit perangkat** membuka form edit yang sudah ada; menutup form
+mengembalikan sidebar. Viewer tidak melihat tombol edit maupun kontrol
+deskripsi/tag.
+
 ## Endpoint Perangkat (Fase 2)
 
 | Method | Path | Akses |
 |---|---|---|
 | GET | `/devices` | `devices:read` — daftar ringan untuk marker peta |
-| GET | `/devices/:id` | `devices:read` — detail + model + tipe |
+| GET | `/devices/:id` | `devices:read` — detail + model + tipe + tags |
+| GET | `/devices/:id/logs` | `devices:read` — 50 riwayat terbaru |
+| POST | `/devices/:id/tags` | `devices:write` — tambah/auto-create tag |
+| DELETE | `/devices/:id/tags/:tagId` | `devices:write` — lepas tag dari perangkat |
 | POST | `/devices` | `devices:write` |
 | PATCH | `/devices/:id` | `devices:write` |
 | DELETE | `/devices/:id` | `devices:delete` |
@@ -224,7 +255,13 @@ Field create/update mengikuti ERD: `name`, `deviceModelId`, `ipAddress`,
   `parent_id` anak menjadi `null`.
 - Setiap create/update/delete dicatat ke `device_logs` dengan `changed_by` =
   email user. Log delete dipertahankan sebagai audit dengan `device_id = null`
-  setelah perangkat dihapus.
+  setelah perangkat dihapus. Tambah/lepas tag dan edit deskripsi juga menulis
+  log aksi `update`.
+- Tag dicocokkan case-insensitive memakai unique index `lower(name)`; nama dari
+  tag pertama dipertahankan. Menghapus tag hanya melepas relasi
+  `device_tags` — baris tag tetap ada dan tetap dipakai perangkat lain.
+- Detail perangkat mengembalikan `tags: [{ id, name }]`; `GET /devices` tetap
+  ringan dan tidak memuat tag.
 - Menghapus perangkat yang masih dipakai kabel menghasilkan **409** dengan pesan
   yang menyebut jumlah kabel; kabel harus dihapus lebih dulu.
 - `GET /devices` hanya mengembalikan id, nama, koordinat, status, dan
