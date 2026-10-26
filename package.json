@@ -6,12 +6,12 @@
     "apps/*"
   ],
   "scripts": {
-    "dev:api": "bun --env-file=.env --cwd apps/api run dev",
-    "dev:web": "bun --env-file=.env --cwd apps/web run dev",
-    "typecheck": "bun --env-file=.env --cwd apps/api run typecheck && bun --env-file=.env --cwd apps/web run typecheck",
-    "db:generate": "bun --env-file=.env --cwd apps/api run db:generate",
-    "db:migrate": "bun --env-file=.env --cwd apps/api run db:migrate",
-    "db:seed": "bun --env-file=.env --cwd apps/api run db:seed"
+    "dev:api": "bun --env-file=\"$PWD/.env\" run --cwd apps/api dev",
+    "dev:web": "bun --env-file=\"$PWD/.env\" run --cwd apps/web dev",
+    "typecheck": "bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck",
+    "db:generate": "bun --env-file=\"$PWD/.env\" run --cwd apps/api db:generate",
+    "db:migrate": "bun --env-file=\"$PWD/.env\" run --cwd apps/api db:migrate",
+    "db:seed": "bun --env-file=\"$PWD/.env\" run --cwd apps/api db:seed"
   },
   "packageManager": "bun@1.4.4"
 }
