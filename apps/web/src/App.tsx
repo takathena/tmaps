@@ -125,7 +125,7 @@ export default function App() {
   if (screen === "map" && user) {
     return (
       <>
-        <MapShell onLogout={handleLogout} />
+        <MapShell user={user} onLogout={handleLogout} />
         {toast ? <Toast message={toast} onClose={() => setToast(null)} /> : null}
       </>
     );

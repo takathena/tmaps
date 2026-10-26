@@ -26,6 +26,65 @@ export type TotpSetup = {
   qrCodeDataUrl: string;
 };
 
+export type DeviceType = {
+  id: string;
+  name: string;
+  category: string;
+  requiresIp: boolean;
+  icon: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeviceModel = {
+  id: string;
+  deviceTypeId: string;
+  vendor: string;
+  modelName: string;
+  portCapacity: number | null;
+  ponCapacity: number | null;
+  productUrl: string | null;
+  referenceImageUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CableType = {
+  id: string;
+  vendor: string;
+  modelName: string;
+  color: string;
+  coreCapacity: number;
+  productUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeviceTypeInput = {
+  name: string;
+  category: string;
+  requiresIp: boolean;
+  icon: string;
+};
+
+export type DeviceModelInput = {
+  deviceTypeId: string;
+  vendor: string;
+  modelName: string;
+  portCapacity: number | null;
+  ponCapacity: number | null;
+  productUrl: string | null;
+  referenceImageUrl: string | null;
+};
+
+export type CableTypeInput = {
+  vendor: string;
+  modelName: string;
+  color: string;
+  coreCapacity: number;
+  productUrl: string | null;
+};
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string | undefined;
@@ -103,6 +162,44 @@ export const api = {
     request<AuthResponse>("/auth/2fa/setup/verify", { method: "POST", body: { code } }),
   verify2fa: (code: string) =>
     request<AuthResponse>("/auth/2fa/verify", { method: "POST", body: { code } }),
+
+  getDeviceTypes: () => request<{ deviceTypes: DeviceType[] }>("/catalog/device-types"),
+  createDeviceType: (body: DeviceTypeInput) =>
+    request<{ deviceType: DeviceType }>("/catalog/device-types", { method: "POST", body }),
+  updateDeviceType: (id: string, body: Partial<DeviceTypeInput>) =>
+    request<{ deviceType: DeviceType }>(`/catalog/device-types/${id}`, {
+      method: "PATCH",
+      body,
+    }),
+  deleteDeviceType: (id: string) =>
+    request<void>(`/catalog/device-types/${id}`, { method: "DELETE" }),
+
+  getDeviceModels: (deviceTypeId?: string) => {
+    const query = deviceTypeId
+      ? `?${new URLSearchParams({ deviceTypeId }).toString()}`
+      : "";
+    return request<{ deviceModels: DeviceModel[] }>(`/catalog/device-models${query}`);
+  },
+  createDeviceModel: (body: DeviceModelInput) =>
+    request<{ deviceModel: DeviceModel }>("/catalog/device-models", { method: "POST", body }),
+  updateDeviceModel: (id: string, body: Partial<DeviceModelInput>) =>
+    request<{ deviceModel: DeviceModel }>(`/catalog/device-models/${id}`, {
+      method: "PATCH",
+      body,
+    }),
+  deleteDeviceModel: (id: string) =>
+    request<void>(`/catalog/device-models/${id}`, { method: "DELETE" }),
+
+  getCableTypes: () => request<{ cableTypes: CableType[] }>("/catalog/cable-types"),
+  createCableType: (body: CableTypeInput) =>
+    request<{ cableType: CableType }>("/catalog/cable-types", { method: "POST", body }),
+  updateCableType: (id: string, body: Partial<CableTypeInput>) =>
+    request<{ cableType: CableType }>(`/catalog/cable-types/${id}`, {
+      method: "PATCH",
+      body,
+    }),
+  deleteCableType: (id: string) =>
+    request<void>(`/catalog/cable-types/${id}`, { method: "DELETE" }),
 };
 
 export function errorMessage(error: unknown): string {

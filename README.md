@@ -136,6 +136,23 @@ Aturan kapasitas mengikuti jenis Device Type:
   perangkat, atau cable type yang masih dipakai kabel menghasilkan **409**
   dengan pesan yang menyebut jumlah pemakaian.
 
+### Katalog di UI
+
+Buka menu titik tiga di kiri atas lalu pilih **Katalog Perangkat** atau
+**Katalog Kabel**. Panel katalog mengambang di atas peta dan bisa ditutup dengan
+tombol X atau `Esc`.
+
+- Tab **Perangkat** menampilkan daftar tipe. Pilih satu tipe untuk melihat dan
+  mengelola modelnya. Form model hanya meminta kapasitas yang sesuai jenis tipe
+  (port atau PON).
+- Tab **Kabel** menampilkan tipe kabel beserta warna garis dan jumlah core.
+- Item yang baru dibuat langsung muncul di daftar dan pilihan form berikutnya
+  tanpa reload.
+- Admin dapat menambah, mengedit, dan menghapus. Teknisi/Viewer hanya melihat
+  katalog tanpa kontrol perubahan.
+- Menghapus item memakai konfirmasi inline; pesan 409 dari API ditampilkan di
+  panel bila item masih dipakai.
+
 ## 2FA
 
 - Secret TOTP dienkripsi AES-256-GCM dengan kunci `TOTP_ENCRYPTION_KEY`
