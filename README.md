@@ -33,6 +33,29 @@ bun run dev:web
 
 API berjalan di `http://localhost:3000`, web di `http://localhost:5173`.
 
+### Akses lewat VPS/Tailscale
+
+Vite sudah mendengarkan `0.0.0.0:5173`, jadi web bisa dibuka dari perangkat
+lain lewat IP VPS. `0.0.0.0` hanya alamat bind di server — **jangan** membukanya
+di browser. Gunakan IP atau hostname VPS, misalnya `http://10.10.66.44:5173`.
+
+Sesuaikan `.env` di VPS agar browser memanggil API yang benar dan CORS
+mengizinkan origin tersebut:
+
+```bash
+VITE_API_URL=http://10.10.66.44:3000
+CORS_ORIGIN=http://localhost:5173,http://10.10.66.44:5173
+```
+
+Ganti `10.10.66.44` dengan hasil `tailscale ip -4` atau IP LAN VPS. Host pada
+URL web dan `VITE_API_URL` harus sama (mis. sama-sama `10.10.66.44`) agar cookie
+sesi terkirim; jangan mencampur `localhost` dengan IP. Setelah mengubah `.env`,
+restart web (`bun run dev:web`) dan API (`docker compose up -d api`) agar
+nilainya terbaca. Pastikan firewall VPS dan Tailscale ACL mengizinkan port
+**5173** dan **3000**. Jika membuka lewat hostname MagicDNS, tambahkan hostname
+itu ke `server.allowedHosts` di `apps/web/vite.config.ts`; akses lewat IP tidak
+memerlukannya.
+
 Untuk menjalankan database **dan API** lewat Docker dari nol:
 
 ```bash
