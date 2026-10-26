@@ -403,6 +403,8 @@ devicesRoutes.patch(
         deviceModelId: devices.deviceModelId,
         ipAddress: devices.ipAddress,
         portUsed: devices.portUsed,
+        latitude: devices.latitude,
+        longitude: devices.longitude,
       })
       .from(devices)
       .where(eq(devices.id, id))
@@ -415,6 +417,9 @@ devicesRoutes.patch(
     const model = await findModelContext(data.deviceModelId ?? existing.deviceModelId);
     const nextIp = data.ipAddress === undefined ? existing.ipAddress : data.ipAddress;
     const nextPortUsed = data.portUsed ?? existing.portUsed;
+    const nextLatitude = data.latitude ?? existing.latitude;
+    const nextLongitude = data.longitude ?? existing.longitude;
+    const moved = data.latitude !== undefined || data.longitude !== undefined;
 
     assertPlacement(model, nextIp, nextPortUsed);
     assertMonitoring(model, data.monitoring);
@@ -467,6 +472,37 @@ devicesRoutes.patch(
         // Model bisa diganti lewat API. Jangan tinggalkan konfigurasi
         // monitoring lama pada perangkat pasif yang tidak bisa di-ping.
         await tx.delete(monitoringConfig).where(eq(monitoringConfig.deviceId, id));
+      }
+
+      if (moved) {
+        // Ujung kabel mengikuti perangkat saat marker dipindahkan. Panjang
+        // yang tersimpan tidak diubah agar override manual tetap dihormati.
+        const connected = await tx
+          .select({
+            id: cables.id,
+            deviceFromId: cables.deviceFromId,
+            deviceToId: cables.deviceToId,
+            path: cables.path,
+          })
+          .from(cables)
+          .where(or(eq(cables.deviceFromId, id), eq(cables.deviceToId, id)));
+
+        for (const cable of connected) {
+          if (cable.path.length < 2) continue;
+
+          const path = [...cable.path];
+          if (cable.deviceFromId === id) {
+            path[0] = { lat: nextLatitude, lng: nextLongitude };
+          }
+          if (cable.deviceToId === id) {
+            path[path.length - 1] = { lat: nextLatitude, lng: nextLongitude };
+          }
+
+          await tx
+            .update(cables)
+            .set({ path, updatedAt: new Date() })
+            .where(eq(cables.id, cable.id));
+        }
       }
     });
 

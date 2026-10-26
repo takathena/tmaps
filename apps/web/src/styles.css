@@ -118,6 +118,12 @@ select:focus-visible {
   outline-offset: -2px;
 }
 
+/* Path Leaflet bisa menerima fokus saat diklik. Outline kotak bawaan browser
+   menutupi peta; status terpilih sudah ditandai lewat garis yang lebih tebal. */
+.leaflet-interactive:focus {
+  outline: none;
+}
+
 .leaflet-control-attribution {
   padding: 2px 6px;
   background: rgba(255, 255, 255, 0.84);
@@ -224,6 +230,33 @@ select:focus-visible {
 }
 
 .device-tooltip-type {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.cable-tooltip.leaflet-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-panel);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.cable-tooltip.leaflet-tooltip::before {
+  border-top-color: #ffffff;
+}
+
+.cable-tooltip-name {
+  font-weight: 500;
+}
+
+.cable-tooltip-meta {
   color: var(--color-text-secondary);
   font-size: 11px;
 }
@@ -1251,6 +1284,61 @@ select:focus-visible {
   gap: 12px;
 }
 
+.cable-endpoints {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-bg-canvas);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cable-endpoint {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cable-endpoint svg {
+  flex: 0 0 auto;
+  color: var(--color-accent);
+}
+
+.cable-endpoint strong {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cable-endpoints > svg {
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+}
+
+.cable-color-dot {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.readonly-note {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-button);
+  background: var(--color-bg-canvas);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .map-status {
   position: absolute;
   bottom: 16px;
@@ -1663,7 +1751,7 @@ select:focus-visible {
     left: 12px;
     right: 12px;
     width: auto;
-    max-height: calc(100vh - 84px);
+    max-height: calc(100vh - 144px);
   }
 
   .map-status {
@@ -1686,7 +1774,7 @@ select:focus-visible {
 
   .device-panel {
     top: 68px;
-    max-height: calc(100vh - 80px);
+    max-height: calc(100vh - 140px);
   }
 
   .catalog-header {

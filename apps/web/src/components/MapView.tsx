@@ -1,9 +1,18 @@
 import { divIcon, type Marker as LeafletMarker } from "leaflet";
 import { useEffect, useMemo, useRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MapContainer, Marker, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
-import type { DeviceSummary } from "../lib/api";
+import {
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Polyline,
+  TileLayer,
+  Tooltip,
+  useMapEvents,
+} from "react-leaflet";
+import type { CablePathPoint, CableSummary, DeviceSummary } from "../lib/api";
 import { getDeviceIcon } from "../lib/device-icons";
+import { formatLength } from "../lib/geo";
 import type { ToolId } from "./Toolbar";
 
 const ESRI_SATELLITE_URL =
@@ -14,6 +23,7 @@ const ESRI_ATTRIBUTION =
 // Tampilan awal peta: Indonesia. Pengguna bebas menggeser dan memperbesar peta.
 const INITIAL_CENTER: [number, number] = [-2.5489, 118.0149];
 const INITIAL_ZOOM = 5;
+const ACCENT_COLOR = "#4465e9";
 
 type PendingLocation = {
   latitude: number;
@@ -23,12 +33,18 @@ type PendingLocation = {
 type MapViewProps = {
   activeTool: ToolId;
   devices: DeviceSummary[];
+  cables: CableSummary[];
   selectedDeviceId: string | null;
+  selectedCableId: string | null;
+  cableStartDeviceId: string | null;
+  cablePreviewPath: CablePathPoint[];
+  cableMidpoints: CablePathPoint[];
   pendingLocation: PendingLocation | null;
   canMoveDevices: boolean;
   onMapClick: (latitude: number, longitude: number) => void;
   onDeviceSelect: (id: string) => void;
   onDeviceMove: (id: string, latitude: number, longitude: number) => void;
+  onCableSelect: (id: string) => void;
 };
 
 function MapClickHandler({
@@ -120,15 +136,76 @@ function DeviceMarker({
   );
 }
 
+function CableLine({
+  cable,
+  selected,
+  interactive,
+  onSelect,
+}: {
+  cable: CableSummary;
+  selected: boolean;
+  interactive: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const positions = cable.path.map((point) => [point.lat, point.lng] as [number, number]);
+
+  return (
+    <>
+      <Polyline
+        positions={positions}
+        interactive={false}
+        pathOptions={{
+          color: "#ffffff",
+          weight: selected ? 11 : 8,
+          opacity: 0.75,
+          lineCap: "round",
+          lineJoin: "round",
+        }}
+      />
+      <Polyline
+        positions={positions}
+        bubblingMouseEvents={false}
+        interactive={interactive}
+        pathOptions={{
+          color: cable.cableType.color,
+          weight: selected ? 7 : 4,
+          opacity: 0.95,
+          lineCap: "round",
+          lineJoin: "round",
+        }}
+        eventHandlers={{
+          click: () => onSelect(cable.id),
+        }}
+      >
+        <Tooltip sticky direction="top" opacity={1} className="cable-tooltip">
+          <span className="cable-tooltip-name">
+            {cable.cableType.vendor} {cable.cableType.modelName}
+          </span>
+          <span className="cable-tooltip-meta">
+            {cable.coreUsed}/{cable.cableType.coreCapacity} core ·{" "}
+            {formatLength(cable.length)}
+          </span>
+        </Tooltip>
+      </Polyline>
+    </>
+  );
+}
+
 export function MapView({
   activeTool,
   devices,
+  cables,
   selectedDeviceId,
+  selectedCableId,
+  cableStartDeviceId,
+  cablePreviewPath,
+  cableMidpoints,
   pendingLocation,
   canMoveDevices,
   onMapClick,
   onDeviceSelect,
   onDeviceMove,
+  onCableSelect,
 }: MapViewProps) {
   const pendingIcon = useMemo(
     () =>
@@ -142,6 +219,9 @@ export function MapView({
   );
 
   const selectEnabled = activeTool === "select";
+  const cableDrawingEnabled = activeTool === "add-cable";
+  const markerSelectable = selectEnabled || cableDrawingEnabled;
+  const mapClickEnabled = activeTool === "add-device" || cableDrawingEnabled;
 
   return (
     <MapContainer
@@ -158,17 +238,57 @@ export function MapView({
         maxZoom={19}
       />
 
-      <MapClickHandler
-        enabled={activeTool === "add-device"}
-        onClick={onMapClick}
-      />
+      <MapClickHandler enabled={mapClickEnabled} onClick={onMapClick} />
+
+      {cables.map((cable) => (
+        <CableLine
+          key={cable.id}
+          cable={cable}
+          selected={cable.id === selectedCableId}
+          interactive={selectEnabled}
+          onSelect={onCableSelect}
+        />
+      ))}
+
+      {cablePreviewPath.length > 1 ? (
+        <Polyline
+          positions={cablePreviewPath.map(
+            (point) => [point.lat, point.lng] as [number, number],
+          )}
+          interactive={false}
+          pathOptions={{
+            color: ACCENT_COLOR,
+            weight: 3,
+            opacity: 0.9,
+            dashArray: "6 8",
+            lineCap: "round",
+          }}
+        />
+      ) : null}
+
+      {cableMidpoints.map((point, index) => (
+        <CircleMarker
+          key={`${point.lat}:${point.lng}:${index}`}
+          center={[point.lat, point.lng]}
+          radius={4}
+          interactive={false}
+          pathOptions={{
+            color: "#ffffff",
+            weight: 2,
+            fillColor: ACCENT_COLOR,
+            fillOpacity: 1,
+          }}
+        />
+      ))}
 
       {devices.map((device) => (
         <DeviceMarker
           key={device.id}
           device={device}
-          selected={device.id === selectedDeviceId}
-          selectable={selectEnabled}
+          selected={
+            device.id === selectedDeviceId || device.id === cableStartDeviceId
+          }
+          selectable={markerSelectable}
           draggable={canMoveDevices && selectEnabled}
           onSelect={onDeviceSelect}
           onMove={onDeviceMove}

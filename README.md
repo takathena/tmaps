@@ -174,6 +174,27 @@ tipe model. Vendor dan kapasitas tidak diminta ulang karena mengikuti model.
   `next_check_at` disiapkan, tetapi status perangkat masih diisi manual sampai
   scheduler Fase 3 aktif.
 
+### Kabel di UI
+
+Tool **+ Kabel** mengikuti flow #7: klik perangkat awal → klik satu atau lebih
+titik tengah mengikuti jalur fisik → klik perangkat tujuan. Setelah itu panel
+meminta tipe kabel, core terpakai, dan panjang.
+
+- Tipe kabel dicari dari katalog; vendor dan kapasitas core tidak diketik ulang.
+  Bila katalog kabel kosong, panel menawarkan jalan langsung ke katalog.
+- Panjang terisi otomatis dari geodesik seluruh segmen path (dibulatkan 0,1 m di
+  form) dan tetap bisa diubah manual. Core terpakai dibatasi kapasitas tipe.
+- Setelah submit, tool kembali ke Select dan polyline langsung tergambar dengan
+  warna cable type. Path dan warna bertahan setelah reload.
+- Klik polyline membuka panel detail/edit/hapus. Viewer hanya dapat melihat
+  detail (field nonaktif, tanpa tombol simpan/hapus); Admin dan Teknisi dapat
+  mengubah serta menghapus kabel.
+- Memindahkan marker perangkat ikut menggeser ujung path kabel yang terhubung.
+  Panjang yang tersimpan (termasuk override manual) tidak diubah otomatis.
+- Menghapus perangkat yang masih terhubung kabel **diblokir 409** dengan pesan
+  jumlah kabel. Ini keputusan final untuk v1: hapus kabel lebih dulu, bukan
+  cascade.
+
 ## Endpoint Perangkat (Fase 2)
 
 | Method | Path | Akses |
@@ -205,10 +226,36 @@ Field create/update mengikuti ERD: `name`, `deviceModelId`, `ipAddress`,
   email user. Log delete dipertahankan sebagai audit dengan `device_id = null`
   setelah perangkat dihapus.
 - Menghapus perangkat yang masih dipakai kabel menghasilkan **409** dengan pesan
-  yang menyebut jumlah kabel (keputusan cascade final dibahas di langkah 2.5).
+  yang menyebut jumlah kabel; kabel harus dihapus lebih dulu.
 - `GET /devices` hanya mengembalikan id, nama, koordinat, status, dan
   type/icon — bukan seluruh kolom — agar tetap ringan untuk peta. Diuji dengan
   1.000 perangkat.
+
+## Endpoint Kabel (Fase 2)
+
+| Method | Path | Akses |
+|---|---|---|
+| GET | `/cables` | `cables:read` — daftar kabel + tipe + nama kedua perangkat |
+| GET | `/cables/:id` | `cables:read` |
+| POST | `/cables` | `cables:write` |
+| PATCH | `/cables/:id` | `cables:write` |
+| DELETE | `/cables/:id` | `cables:delete` |
+
+Field create/update: `cableTypeId`, `deviceFromId`, `deviceToId`, `path`,
+`length` (opsional), `coreUsed`. Aturan validasi:
+
+- `path` berisi 2–200 titik `{ lat, lng }`, masing-masing dalam rentang
+  koordinat valid.
+- `deviceFromId` dan `deviceToId` harus perangkat yang ada dan berbeda.
+- `cableTypeId` harus ada; `coreUsed` bilangan bulat ≥1 dan tidak boleh melebihi
+  `coreCapacity` tipe kabel.
+- Bila `length` tidak dikirim saat create — atau `path` diubah tanpa `length`
+  saat update — panjang dihitung geodesik per segmen (haversine) dan dibulatkan
+  ke sentimeter. `length` manual yang dikirim selalu dipertahankan.
+- Saat perangkat dipindahkan lewat `PATCH /devices/:id`, titik pertama/terakhir
+  path kabel yang terhubung diperbarui dalam transaksi yang sama. `length`
+  tersimpan tidak diubah agar override manual tetap dihormati.
+- Menghapus kabel hanya menghapus baris kabel; perangkat tetap ada.
 
 ## 2FA
 

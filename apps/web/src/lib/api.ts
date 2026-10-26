@@ -152,6 +152,53 @@ export type DeviceCreateInput = {
 
 export type DeviceUpdateInput = Partial<DeviceCreateInput>;
 
+export type CablePathPoint = {
+  lat: number;
+  lng: number;
+};
+
+export type CableSummary = {
+  id: string;
+  cableTypeId: string;
+  deviceFromId: string;
+  deviceToId: string;
+  path: CablePathPoint[];
+  length: number;
+  coreUsed: number;
+  cableType: {
+    id: string;
+    vendor: string;
+    modelName: string;
+    color: string;
+    coreCapacity: number;
+  };
+  deviceFrom: { id: string; name: string };
+  deviceTo: { id: string; name: string };
+};
+
+export type CableDetail = CableSummary & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CableCreateInput = {
+  cableTypeId: string;
+  deviceFromId: string;
+  deviceToId: string;
+  path: CablePathPoint[];
+  length?: number;
+  coreUsed: number;
+};
+
+export type CableUpdateInput = {
+  cableTypeId?: string;
+  deviceFromId?: string;
+  deviceToId?: string;
+  path?: CablePathPoint[];
+  length?: number;
+  coreUsed?: number;
+};
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string | undefined;
@@ -275,6 +322,14 @@ export const api = {
   updateDevice: (id: string, body: DeviceUpdateInput) =>
     request<{ device: DeviceDetail }>(`/devices/${id}`, { method: "PATCH", body }),
   deleteDevice: (id: string) => request<void>(`/devices/${id}`, { method: "DELETE" }),
+
+  getCables: () => request<{ cables: CableSummary[] }>("/cables"),
+  getCable: (id: string) => request<{ cable: CableDetail }>(`/cables/${id}`),
+  createCable: (body: CableCreateInput) =>
+    request<{ cable: CableDetail }>("/cables", { method: "POST", body }),
+  updateCable: (id: string, body: CableUpdateInput) =>
+    request<{ cable: CableDetail }>(`/cables/${id}`, { method: "PATCH", body }),
+  deleteCable: (id: string) => request<void>(`/cables/${id}`, { method: "DELETE" }),
 };
 
 export function errorMessage(error: unknown): string {
