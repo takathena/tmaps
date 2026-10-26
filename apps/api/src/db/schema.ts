@@ -17,10 +17,12 @@ import {
 } from "drizzle-orm/pg-core";
 
 /**
- * Struktur permission belum diputuskan (Keputusan Terbuka #4).
- * Tipe sengaja longgar sampai bentuk final disepakati di langkah 1.4.
+ * Struktur permission final mengikuti Keputusan #4:
+ * resource -> action -> boolean. Lihat lib/permissions.ts.
  */
-export type RolePermissions = Record<string, unknown>;
+import type { RolePermissions } from "../lib/permissions.ts";
+
+export type { RolePermissions } from "../lib/permissions.ts";
 
 export type CablePathPoint = {
   lat: number;

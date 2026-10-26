@@ -51,4 +51,25 @@ db/init    — inisialisasi PostGIS untuk volume baru
 
 ## Keputusan yang Diambil
 
-Diisi saat keputusan terbuka Fase 1 dijawab (lihat `build-plan-3-fase.md` Bagian 2).
+### Fase 1
+
+| # | Keputusan | Pilihan |
+|---|---|---|
+| 1 | Mekanisme sesi | **Sesi DB** (token opaque acak, disimpan sebagai hash SHA-256 di `sessions`, dikirim lewat cookie `HttpOnly` `SameSite=Lax`). Logout menghapus sesi. |
+| 4 | Struktur permission | **Resource + action** di `roles.permissions`: `{ "<resource>": { "read": true, "write": false, "delete": false } }`. |
+
+Resource yang dipakai: `catalog`, `devices`, `cables`, `monitoring`, `notifications`, `users`, `roles`.
+Action: `read`, `write`, `delete`. Permission yang tidak ada dianggap ditolak.
+
+Matriks seed bawaan:
+
+| Role | catalog | devices | cables | monitoring | notifications | users | roles | require_2fa |
+|---|---|---|---|---|---|---|---|---|
+| Admin | RW D | RW D | RW D | RW D | RW D | RW D | RW D | ya |
+| Teknisi | R | RW D | RW D | RW | RW | – | – | tidak |
+| Viewer | R | R | R | R | R | – | – | tidak |
+
+`R` = read, `W` = write, `D` = delete, `–` = tidak ada akses.
+
+Keputusan #2 (enkripsi secret 2FA) dan #3 (backup code) dicatat setelah langkah 1.5.
+

@@ -1,18 +1,24 @@
 import { eq } from "drizzle-orm";
 import { db, pool } from "./client.ts";
-import { roles, users, type RolePermissions } from "./schema.ts";
+import {
+  ADMIN_PERMISSIONS,
+  TEKNISI_PERMISSIONS,
+  VIEWER_PERMISSIONS,
+  type RolePermissions,
+} from "../lib/permissions.ts";
+import { roles, users } from "./schema.ts";
 
-/**
- * Permission final mengikuti Keputusan Terbuka #4 dan akan diisi pada langkah 1.4.
- * Seed sengaja tidak mengarang struktur permission sebelum diputuskan user.
- */
-const EMPTY_PERMISSIONS: RolePermissions = {};
+type RoleSeed = {
+  name: string;
+  require2fa: boolean;
+  permissions: RolePermissions;
+};
 
-const roleSeeds = [
-  { name: "Admin", require2fa: true, permissions: EMPTY_PERMISSIONS },
-  { name: "Teknisi", require2fa: false, permissions: EMPTY_PERMISSIONS },
-  { name: "Viewer", require2fa: false, permissions: EMPTY_PERMISSIONS },
-] as const;
+const roleSeeds: RoleSeed[] = [
+  { name: "Admin", require2fa: true, permissions: ADMIN_PERMISSIONS },
+  { name: "Teknisi", require2fa: false, permissions: TEKNISI_PERMISSIONS },
+  { name: "Viewer", require2fa: false, permissions: VIEWER_PERMISSIONS },
+];
 
 async function seed() {
   const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
@@ -31,23 +37,32 @@ async function seed() {
   let adminRoleId: string | undefined;
 
   for (const roleSeed of roleSeeds) {
-    await db.insert(roles).values(roleSeed).onConflictDoNothing({ target: roles.name });
+    const [existing] = await db.select().from(roles).where(eq(roles.name, roleSeed.name)).limit(1);
 
-    const [role] = await db.select().from(roles).where(eq(roles.name, roleSeed.name)).limit(1);
-    if (!role) {
-      throw new Error(`Role ${roleSeed.name} gagal dibuat.`);
+    if (!existing) {
+      const [created] = await db.insert(roles).values(roleSeed).returning({ id: roles.id, name: roles.name });
+      if (roleSeed.name === "Admin") adminRoleId = created?.id;
+      continue;
     }
 
-    if (roleSeed.name === "Admin") {
-      adminRoleId = role.id;
+    // Jangan menimpa permission yang sudah diubah admin. Isi hanya bila masih kosong
+    // (mis. role hasil seed lama sebelum Keputusan #4 dijawab).
+    if (Object.keys(existing.permissions ?? {}).length === 0) {
+      await db.update(roles).set({ permissions: roleSeed.permissions }).where(eq(roles.id, existing.id));
     }
+
+    if (roleSeed.name === "Admin") adminRoleId = existing.id;
   }
 
   if (!adminRoleId) {
     throw new Error("Role Admin tidak ditemukan setelah seed.");
   }
 
-  const [existingAdmin] = await db.select({ id: users.id }).from(users).where(eq(users.email, adminEmail)).limit(1);
+  const [existingAdmin] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, adminEmail))
+    .limit(1);
 
   if (existingAdmin) {
     console.log(`User admin ${adminEmail} sudah ada, seed tidak mengubah data.`);

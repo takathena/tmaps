@@ -3,9 +3,12 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { corsOrigins } from "./env.ts";
 import { errorHandler, notFoundHandler } from "./lib/error-handler.ts";
+import authRoutes from "./routes/auth.ts";
 import health from "./routes/health.ts";
+import rolesRoutes from "./routes/roles.ts";
+import type { AppEnv } from "./types.ts";
 
-export const app = new Hono();
+export const app = new Hono<AppEnv>();
 
 app.onError(errorHandler);
 app.notFound(notFoundHandler);
@@ -28,5 +31,7 @@ app.use(
 );
 
 app.route("/health", health);
+app.route("/auth", authRoutes);
+app.route("/roles", rolesRoutes);
 
 export default app;
