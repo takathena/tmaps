@@ -21,8 +21,10 @@ cp .env.example .env
 # edit .env: isi password DB, seed admin, CORS, dsb.
 # buat kunci enkripsi secret 2FA lalu isi TOTP_ENCRYPTION_KEY:
 openssl rand -base64 32
-docker compose up -d db
 bun install
+
+# Opsi dev: database di Docker, API + web langsung di host.
+docker compose up -d db
 bun run db:migrate
 bun run db:seed
 bun run dev:api
@@ -30,12 +32,24 @@ bun run dev:web
 ```
 
 API berjalan di `http://localhost:3000`, web di `http://localhost:5173`.
+
+Untuk menjalankan database **dan API** lewat Docker dari nol:
+
+```bash
+docker compose up -d --build
+bun install
+bun run db:migrate
+bun run db:seed
+bun run dev:web
+```
+
+API container tetap memakai `.env` yang sama. Migrasi dan seed dijalankan dari
+host setelah database healthy. Perintah `docker compose down -v` menghapus volume
+database (dipakai hanya saat ingin memulai dari nol).
+
 Admin awal dibuat dari `SEED_ADMIN_EMAIL` + `SEED_ADMIN_PASSWORD`. Role Admin
 memiliki `require_2fa = true`, sehingga login pertama akan meminta setup TOTP
 (QR ditampilkan oleh frontend, bukan di README).
-
-Untuk menjalankan API di container: `docker compose up -d api` (setelah `.env` terisi).
-Migrasi dan seed tetap dijalankan dari host dengan perintah di atas.
 
 ## Perintah
 
@@ -48,6 +62,7 @@ Migrasi dan seed tetap dijalankan dari host dengan perintah di atas.
 | `bun run db:seed` | Seed role dan admin awal (idempoten) |
 | `bun run dev:api` | API mode watch |
 | `bun run dev:web` | Web mode dev |
+| `bun run --cwd apps/web build` | Build web untuk produksi |
 | `bun run --cwd apps/api test` | Test unit API |
 | `bun run typecheck` | Typecheck API + web |
 
@@ -92,6 +107,19 @@ WHERE user_id = (SELECT id FROM users WHERE email = 'email-user@example.com')
 ```
 
 Setelah reset, user login dengan password dan akan diarahkan ke setup QR lagi.
+
+## Frontend Fase 1
+
+- Halaman login, verifikasi TOTP, dan setup QR terhubung langsung ke API.
+  `VITE_API_URL` dibaca dari `.env` di root repo (Vite memakai `envDir` root).
+- Setelah login, peta satelit ESRI tampil penuh layar. Container overlay memakai
+  `pointer-events: none`; hanya panel (logo/menu, lonceng, toolbar) yang menerima
+  klik, sehingga peta tetap bisa di-drag dan di-zoom di area kosong.
+- Toolbar bawah hanya menyimpan state tool aktif pada Fase 1. Menu katalog,
+  pengaturan, dan akun ditandai "Segera" karena fiturnya baru dibangun pada fase
+  berikutnya. Lonceng belum menampilkan notifikasi.
+- Peta membutuhkan koneksi internet untuk tile ESRI dan font DM Sans dari Google
+  Fonts. Tanpa internet, peta tetap tampil dengan latar netral dan font fallback.
 
 ## Struktur
 
