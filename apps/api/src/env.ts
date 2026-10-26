@@ -6,6 +6,25 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().min(1).default("http://localhost:5173"),
   SESSION_TTL_HOURS: z.coerce.number().positive().default(168),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+
+  // Kunci enkripsi secret 2FA (Keputusan #2). Harus base64 dari tepat 32 byte.
+  TOTP_ENCRYPTION_KEY: z
+    .string()
+    .min(1, "TOTP_ENCRYPTION_KEY wajib diisi.")
+    .refine(
+      (value) => {
+        try {
+          return Buffer.from(value, "base64").length === 32;
+        } catch {
+          return false;
+        }
+      },
+      "TOTP_ENCRYPTION_KEY harus base64 dari 32 byte (contoh: openssl rand -base64 32).",
+    ),
+
+  TWO_FA_PENDING_TTL_MINUTES: z.coerce.number().int().positive().default(5),
+  TWO_FA_LOCK_MINUTES: z.coerce.number().int().positive().default(15),
+  TWO_FA_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
 });
 
 const parsed = envSchema.safeParse(process.env);

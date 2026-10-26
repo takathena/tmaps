@@ -58,6 +58,8 @@ function httpStatusToCode(status: number): string {
       return "NOT_FOUND";
     case 409:
       return "CONFLICT";
+    case 423:
+      return "ACCOUNT_LOCKED";
     case 429:
       return "TOO_MANY_REQUESTS";
     default:

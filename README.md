@@ -18,7 +18,9 @@ Dokumen acuan ada di repo ini:
 
 ```bash
 cp .env.example .env
-# edit .env: isi password DB, seed admin, dsb.
+# edit .env: isi password DB, seed admin, CORS, dsb.
+# buat kunci enkripsi secret 2FA lalu isi TOTP_ENCRYPTION_KEY:
+openssl rand -base64 32
 docker compose up -d db
 bun install
 bun run db:migrate
@@ -28,18 +30,68 @@ bun run dev:web
 ```
 
 API berjalan di `http://localhost:3000`, web di `http://localhost:5173`.
+Admin awal dibuat dari `SEED_ADMIN_EMAIL` + `SEED_ADMIN_PASSWORD`. Role Admin
+memiliki `require_2fa = true`, sehingga login pertama akan meminta setup TOTP
+(QR ditampilkan oleh frontend, bukan di README).
+
+Untuk menjalankan API di container: `docker compose up -d api` (setelah `.env` terisi).
+Migrasi dan seed tetap dijalankan dari host dengan perintah di atas.
 
 ## Perintah
 
 | Perintah | Fungsi |
 |---|---|
 | `docker compose up -d db` | Menjalankan PostgreSQL + PostGIS |
+| `docker compose up -d api` | Build + jalankan API di container |
 | `bun install` | Memasang dependency |
 | `bun run db:migrate` | Menjalankan migrasi + memastikan PostGIS aktif |
 | `bun run db:seed` | Seed role dan admin awal (idempoten) |
 | `bun run dev:api` | API mode watch |
 | `bun run dev:web` | Web mode dev |
+| `bun run --cwd apps/api test` | Test unit API |
 | `bun run typecheck` | Typecheck API + web |
+
+## Endpoint Fase 1
+
+| Method | Path | Akses |
+|---|---|---|
+| GET | `/health` | publik, cek koneksi DB |
+| POST | `/auth/login` | publik, email + password |
+| POST | `/auth/2fa/setup` | sesi sementara setup 2FA |
+| POST | `/auth/2fa/setup/verify` | sesi sementara setup 2FA |
+| POST | `/auth/2fa/verify` | sesi sementara login 2FA |
+| POST | `/auth/logout` | publik (menghapus sesi bila ada) |
+| GET | `/auth/me` | sesi login |
+| GET | `/roles` | permission `roles:read` |
+| PATCH | `/roles/:id` | permission `roles:write` (`{ "require2fa": boolean }`) |
+
+Sesi login disimpan di tabel `sessions` dengan `purpose = 'session'`. Sesi
+sementara 2FA memakai `purpose = '2fa_setup'` / `'2fa_login'`, berlaku
+`TWO_FA_PENDING_TTL_MINUTES`, dan tidak bisa dipakai mengakses endpoint login.
+
+## 2FA
+
+- Secret TOTP dienkripsi AES-256-GCM dengan kunci `TOTP_ENCRYPTION_KEY`
+  (base64 32 byte) sebelum disimpan ke `users.two_fa_secret`.
+- Kode TOTP 6 digit, periode 30 detik, toleransi ±1 periode.
+- Setelah 5 kode salah, akun terkunci sementara (`TWO_FA_LOCK_MINUTES`).
+- Tidak ada backup code di v1. Jika user kehilangan authenticator, admin
+  mereset 2FA lewat DB, lalu user melakukan setup ulang:
+
+```sql
+UPDATE users
+SET two_fa_enabled = false,
+    two_fa_secret = NULL,
+    two_fa_failed_attempts = 0,
+    two_fa_locked_until = NULL
+WHERE email = 'email-user@example.com';
+
+DELETE FROM sessions
+WHERE user_id = (SELECT id FROM users WHERE email = 'email-user@example.com')
+  AND purpose IN ('2fa_setup', '2fa_login');
+```
+
+Setelah reset, user login dengan password dan akan diarahkan ke setup QR lagi.
 
 ## Struktur
 
@@ -56,6 +108,8 @@ db/init    — inisialisasi PostGIS untuk volume baru
 | # | Keputusan | Pilihan |
 |---|---|---|
 | 1 | Mekanisme sesi | **Sesi DB** (token opaque acak, disimpan sebagai hash SHA-256 di `sessions`, dikirim lewat cookie `HttpOnly` `SameSite=Lax`). Logout menghapus sesi. |
+| 2 | Enkripsi secret 2FA | **AES-256-GCM**, kunci 32 byte dari `TOTP_ENCRYPTION_KEY` (base64). Format ciphertext `v1.<iv>.<tag>.<ciphertext>`. |
+| 3 | Backup code 2FA | **Tidak ada di v1**. Reset manual lewat prosedur SQL di bagian 2FA. |
 | 4 | Struktur permission | **Resource + action** di `roles.permissions`: `{ "<resource>": { "read": true, "write": false, "delete": false } }`. |
 
 Resource yang dipakai: `catalog`, `devices`, `cables`, `monitoring`, `notifications`, `users`, `roles`.
@@ -71,5 +125,6 @@ Matriks seed bawaan:
 
 `R` = read, `W` = write, `D` = delete, `–` = tidak ada akses.
 
-Keputusan #2 (enkripsi secret 2FA) dan #3 (backup code) dicatat setelah langkah 1.5.
+Keputusan #5 (storage gambar), #6 (status baca notifikasi), dan #7 (retensi
+`ping_logs`) dicatat saat fase terkait.
 

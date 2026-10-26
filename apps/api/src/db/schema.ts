@@ -31,6 +31,8 @@ export type CablePathPoint = {
 
 export const deviceStatusEnum = pgEnum("device_status", ["active", "offline", "unmonitored"]);
 
+export const sessionPurposeEnum = pgEnum("session_purpose", ["session", "2fa_setup", "2fa_login"]);
+
 // ---------------------------------------------------------------------------
 // Auth & RBAC
 // ---------------------------------------------------------------------------
@@ -78,6 +80,7 @@ export const sessions = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     token: text("token").notNull().unique(),
+    purpose: sessionPurposeEnum("purpose").notNull().default("session"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
