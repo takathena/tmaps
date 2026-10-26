@@ -107,6 +107,35 @@ Sesi login disimpan di tabel `sessions` dengan `purpose = 'session'`. Sesi
 sementara 2FA memakai `purpose = '2fa_setup'` / `'2fa_login'`, berlaku
 `TWO_FA_PENDING_TTL_MINUTES`, dan tidak bisa dipakai mengakses endpoint login.
 
+## Endpoint Katalog (Fase 2)
+
+| Method | Path | Akses |
+|---|---|---|
+| GET | `/catalog/device-types` | `catalog:read` |
+| POST | `/catalog/device-types` | `catalog:write` |
+| PATCH | `/catalog/device-types/:id` | `catalog:write` |
+| DELETE | `/catalog/device-types/:id` | `catalog:delete` |
+| GET | `/catalog/device-models?deviceTypeId=` | `catalog:read` |
+| POST | `/catalog/device-models` | `catalog:write` |
+| PATCH | `/catalog/device-models/:id` | `catalog:write` |
+| DELETE | `/catalog/device-models/:id` | `catalog:delete` |
+| GET | `/catalog/cable-types` | `catalog:read` |
+| POST | `/catalog/cable-types` | `catalog:write` |
+| PATCH | `/catalog/cable-types/:id` | `catalog:write` |
+| DELETE | `/catalog/cable-types/:id` | `catalog:delete` |
+
+Aturan kapasitas mengikuti jenis Device Type:
+
+- Device Type yang nama/kategorinya memuat **OLT** (atau "Optical Line
+  Terminal") wajib memakai `ponCapacity`; `portCapacity` harus kosong.
+- Tipe lain (Router, Switch, ODP, ODC, dsb.) wajib memakai `portCapacity`;
+  `ponCapacity` harus kosong.
+- Kapasitas harus bilangan bulat dan tidak boleh negatif. `coreCapacity` kabel
+  harus lebih dari 0 dan warnanya format hex `#RRGGBB`.
+- Menghapus device type yang masih punya model, device model yang masih dipakai
+  perangkat, atau cable type yang masih dipakai kabel menghasilkan **409**
+  dengan pesan yang menyebut jumlah pemakaian.
+
 ## 2FA
 
 - Secret TOTP dienkripsi AES-256-GCM dengan kunci `TOTP_ENCRYPTION_KEY`

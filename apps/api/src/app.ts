@@ -4,6 +4,7 @@ import { logger } from "hono/logger";
 import { corsOrigins } from "./env.ts";
 import { errorHandler, notFoundHandler } from "./lib/error-handler.ts";
 import authRoutes from "./routes/auth.ts";
+import catalogRoutes from "./routes/catalog.ts";
 import health from "./routes/health.ts";
 import rolesRoutes from "./routes/roles.ts";
 import type { AppEnv } from "./types.ts";
@@ -33,5 +34,6 @@ app.use(
 app.route("/health", health);
 app.route("/auth", authRoutes);
 app.route("/roles", rolesRoutes);
+app.route("/catalog", catalogRoutes);
 
 export default app;
