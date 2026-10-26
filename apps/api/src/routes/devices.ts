@@ -9,8 +9,14 @@ import {
   deviceModels,
   deviceTypes,
   devices,
+  monitoringConfig,
 } from "../db/schema.ts";
-import { devicePlacementError, type DeviceModelCapacity } from "../lib/device-rules.ts";
+import {
+  deviceMonitoringError,
+  devicePlacementError,
+  type DeviceModelCapacity,
+  type DeviceMonitoringInput,
+} from "../lib/device-rules.ts";
 import { jsonBody } from "../lib/validation.ts";
 import { requireAuth } from "../middleware/auth.ts";
 import { requirePermission } from "../middleware/permission.ts";
@@ -42,6 +48,15 @@ const statusSchema = z.enum(["active", "offline", "unmonitored"], {
   message: "Status perangkat tidak valid.",
 });
 
+const monitoringSchema = z.object({
+  enabled: z.boolean(),
+  intervalSeconds: z
+    .number()
+    .int("Interval monitoring harus bilangan bulat.")
+    .min(5, "Interval monitoring minimal 5 detik.")
+    .max(86_400, "Interval monitoring maksimal 86.400 detik."),
+});
+
 const deviceFields = {
   name: text("Nama perangkat", 120),
   deviceModelId: z.string().uuid("deviceModelId harus UUID yang valid."),
@@ -63,6 +78,7 @@ const deviceFields = {
   description: optionalText("Deskripsi", 2000),
   status: statusSchema,
   installedAt: z.coerce.date({ message: "Tanggal instalasi tidak valid." }).optional(),
+  monitoring: monitoringSchema.optional(),
 };
 
 const createDeviceSchema = z.object({
@@ -136,6 +152,16 @@ function assertPlacement(
   }
 }
 
+function assertMonitoring(
+  model: DeviceModelCapacity,
+  monitoring: DeviceMonitoringInput | undefined,
+): void {
+  const message = deviceMonitoringError(model, monitoring);
+  if (message) {
+    throw new HTTPException(400, { message });
+  }
+}
+
 async function assertParent(parentId: string | null, deviceId?: string): Promise<void> {
   if (parentId === null) return;
 
@@ -181,6 +207,8 @@ type DeviceDetailRow = {
   typeCategory: string;
   requiresIp: boolean;
   icon: string;
+  monitoringEnabled: boolean | null;
+  monitoringIntervalSeconds: number | null;
 };
 
 function toDeviceDetail(row: DeviceDetailRow) {
@@ -214,6 +242,13 @@ function toDeviceDetail(row: DeviceDetailRow) {
       requiresIp: row.requiresIp,
       icon: row.icon,
     },
+    monitoring:
+      row.monitoringEnabled === null
+        ? null
+        : {
+            enabled: row.monitoringEnabled,
+            intervalSeconds: row.monitoringIntervalSeconds ?? 60,
+          },
   };
 }
 
@@ -244,10 +279,13 @@ async function findDeviceDetail(id: string) {
       typeCategory: deviceTypes.category,
       requiresIp: deviceTypes.requiresIp,
       icon: deviceTypes.icon,
+      monitoringEnabled: monitoringConfig.enabled,
+      monitoringIntervalSeconds: monitoringConfig.intervalSeconds,
     })
     .from(devices)
     .innerJoin(deviceModels, eq(devices.deviceModelId, deviceModels.id))
     .innerJoin(deviceTypes, eq(deviceModels.deviceTypeId, deviceTypes.id))
+    .leftJoin(monitoringConfig, eq(monitoringConfig.deviceId, devices.id))
     .where(eq(devices.id, id))
     .limit(1);
 
@@ -302,6 +340,7 @@ devicesRoutes.post(
 
     const model = await findModelContext(data.deviceModelId);
     assertPlacement(model, data.ipAddress ?? null, data.portUsed);
+    assertMonitoring(model, data.monitoring);
     await assertParent(data.parentId ?? null);
 
     let createdId = "";
@@ -334,6 +373,15 @@ devicesRoutes.post(
         action: "create",
         changedBy: user.email,
       });
+
+      if (data.monitoring) {
+        await tx.insert(monitoringConfig).values({
+          deviceId: created.id,
+          enabled: data.monitoring.enabled,
+          intervalSeconds: data.monitoring.intervalSeconds,
+          nextCheckAt: new Date(),
+        });
+      }
     });
 
     return c.json({ device: await findDeviceDetail(createdId) }, 201);
@@ -369,6 +417,7 @@ devicesRoutes.patch(
     const nextPortUsed = data.portUsed ?? existing.portUsed;
 
     assertPlacement(model, nextIp, nextPortUsed);
+    assertMonitoring(model, data.monitoring);
 
     if (data.parentId !== undefined) {
       await assertParent(data.parentId, id);
@@ -393,6 +442,32 @@ devicesRoutes.patch(
         action: "update",
         changedBy: user.email,
       });
+
+      if (data.monitoring) {
+        const now = new Date();
+        await tx
+          .insert(monitoringConfig)
+          .values({
+            deviceId: id,
+            enabled: data.monitoring.enabled,
+            intervalSeconds: data.monitoring.intervalSeconds,
+            nextCheckAt: now,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: monitoringConfig.deviceId,
+            set: {
+              enabled: data.monitoring.enabled,
+              intervalSeconds: data.monitoring.intervalSeconds,
+              nextCheckAt: now,
+              updatedAt: now,
+            },
+          });
+      } else if (!model.requiresIp) {
+        // Model bisa diganti lewat API. Jangan tinggalkan konfigurasi
+        // monitoring lama pada perangkat pasif yang tidak bisa di-ping.
+        await tx.delete(monitoringConfig).where(eq(monitoringConfig.deviceId, id));
+      }
     });
 
     return c.json({ device: await findDeviceDetail(id) });

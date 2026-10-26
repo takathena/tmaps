@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { deviceCapacityInfo, devicePlacementError, type DeviceModelCapacity } from "./device-rules.ts";
+import {
+  deviceCapacityInfo,
+  deviceMonitoringError,
+  devicePlacementError,
+  type DeviceModelCapacity,
+} from "./device-rules.ts";
 
 const olt: DeviceModelCapacity = {
   typeName: "OLT",
@@ -80,5 +85,15 @@ describe("aturan penempatan perangkat", () => {
         { ipAddress: "10.0.0.2", portUsed: 1 },
       ),
     ).toContain("Kapasitas model belum diisi");
+  });
+
+  it("monitoring hanya untuk tipe perangkat yang membutuhkan IP", () => {
+    const monitoring = { enabled: true, intervalSeconds: 60 };
+
+    expect(deviceMonitoringError(router, monitoring)).toBeNull();
+    expect(deviceMonitoringError(router, undefined)).toBeNull();
+    expect(deviceMonitoringError(odp, monitoring)).toContain(
+      "Monitoring hanya tersedia untuk tipe perangkat yang membutuhkan IP",
+    );
   });
 });

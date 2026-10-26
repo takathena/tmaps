@@ -85,6 +85,73 @@ export type CableTypeInput = {
   productUrl: string | null;
 };
 
+export type DeviceStatus = "active" | "offline" | "unmonitored";
+
+export type DeviceSummary = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  status: DeviceStatus;
+  deviceTypeId: string;
+  typeName: string;
+  icon: string;
+};
+
+export type DeviceMonitoringConfig = {
+  enabled: boolean;
+  intervalSeconds: number;
+};
+
+export type DeviceDetail = {
+  id: string;
+  name: string;
+  deviceModelId: string;
+  ipAddress: string | null;
+  latitude: number;
+  longitude: number;
+  parentId: string | null;
+  portUsed: number;
+  description: string | null;
+  status: DeviceStatus;
+  installedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  deviceModel: {
+    id: string;
+    vendor: string;
+    modelName: string;
+    portCapacity: number | null;
+    ponCapacity: number | null;
+    productUrl: string | null;
+    referenceImageUrl: string | null;
+  };
+  deviceType: {
+    id: string;
+    name: string;
+    category: string;
+    requiresIp: boolean;
+    icon: string;
+  };
+  monitoring: DeviceMonitoringConfig | null;
+};
+
+export type DeviceCreateInput = {
+  name: string;
+  deviceModelId: string;
+  ipAddress?: string | null;
+  latitude: number;
+  longitude: number;
+  parentId?: string | null;
+  portUsed?: number;
+  description?: string | null;
+  status?: DeviceStatus;
+  installedAt?: string;
+  monitoring?: DeviceMonitoringConfig;
+};
+
+export type DeviceUpdateInput = Partial<DeviceCreateInput>;
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string | undefined;
@@ -200,6 +267,14 @@ export const api = {
     }),
   deleteCableType: (id: string) =>
     request<void>(`/catalog/cable-types/${id}`, { method: "DELETE" }),
+
+  getDevices: () => request<{ devices: DeviceSummary[] }>("/devices"),
+  getDevice: (id: string) => request<{ device: DeviceDetail }>(`/devices/${id}`),
+  createDevice: (body: DeviceCreateInput) =>
+    request<{ device: DeviceDetail }>("/devices", { method: "POST", body }),
+  updateDevice: (id: string, body: DeviceUpdateInput) =>
+    request<{ device: DeviceDetail }>(`/devices/${id}`, { method: "PATCH", body }),
+  deleteDevice: (id: string) => request<void>(`/devices/${id}`, { method: "DELETE" }),
 };
 
 export function errorMessage(error: unknown): string {

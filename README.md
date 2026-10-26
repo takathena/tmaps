@@ -153,6 +153,27 @@ tombol X atau `Esc`.
 - Menghapus item memakai konfirmasi inline; pesan 409 dari API ditampilkan di
   panel bila item masih dipakai.
 
+### Perangkat di UI
+
+Tool **+ Perangkat** mengikuti flow #6: klik lokasi di peta, pilih model lewat
+pencarian katalog, isi nama perangkat, lalu lengkapi field yang muncul sesuai
+tipe model. Vendor dan kapasitas tidak diminta ulang karena mengikuti model.
+
+- Tipe `requires_ip` meminta IP address, toggle monitoring, dan interval
+  (default 60 detik, rentang 5–86.400 detik). Tipe pasif seperti ODP/ODC
+  meminta jumlah port/PON terpakai dan tidak menampilkan monitoring.
+- Bila katalog perangkat masih kosong, panel menampilkan tautan langsung ke
+  katalog.
+- Marker memakai icon Device Type dan titik status: hijau `active`, merah
+  `offline`, abu-abu `unmonitored`. Marker bisa di-drag untuk memindahkan
+  koordinat; klik marker membuka panel edit/hapus. Setelah submit, tool kembali
+  ke Select.
+- Admin dan Teknisi dapat menambah/mengedit/menghapus perangkat; Viewer hanya
+  melihat marker. Katalog tetap hanya bisa diubah Admin.
+- Mesin ping belum berjalan di Fase 2. Konfigurasi monitoring disimpan dan
+  `next_check_at` disiapkan, tetapi status perangkat masih diisi manual sampai
+  scheduler Fase 3 aktif.
+
 ## Endpoint Perangkat (Fase 2)
 
 | Method | Path | Akses |
@@ -164,11 +185,17 @@ tombol X atau `Esc`.
 | DELETE | `/devices/:id` | `devices:delete` |
 
 Field create/update mengikuti ERD: `name`, `deviceModelId`, `ipAddress`,
-`latitude`, `longitude`, `parentId`, `portUsed`, `description`, `status`, dan
-`installedAt`. Aturan validasi:
+`latitude`, `longitude`, `parentId`, `portUsed`, `description`, `status`,
+`installedAt`, dan objek opsional `monitoring` berisi `enabled` +
+`intervalSeconds`. Aturan validasi:
 
 - `ipAddress` wajib dan valid (IPv4/IPv6) bila Device Type `requires_ip`.
   IP yang diisi untuk tipe lain juga tetap harus valid.
+- `monitoring` hanya diterima untuk tipe `requires_ip`; `intervalSeconds` harus
+  bilangan bulat 5–86.400. Create/update menulis ke tabel `monitoring_config`
+  (satu baris per perangkat, `next_check_at` diisi saat ini). Detail mengembalikan
+  `monitoring: { enabled, intervalSeconds }` atau `null`; daftar ringan tidak
+  memuatnya.
 - `portUsed` tidak boleh melebihi kapasitas model: PON capacity untuk OLT, port
   capacity untuk tipe lain.
 - `latitude` -90..90 dan `longitude` -180..180. `parentId` harus perangkat yang

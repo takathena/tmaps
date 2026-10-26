@@ -18,6 +18,11 @@ export type DevicePlacementInput = {
   portUsed: number;
 };
 
+export type DeviceMonitoringInput = {
+  enabled: boolean;
+  intervalSeconds: number;
+};
+
 export type DeviceCapacityInfo = {
   usesPon: boolean;
   label: string;
@@ -64,6 +69,23 @@ export function devicePlacementError(
 
   if (input.portUsed > capacity) {
     return `${label} terpakai (${input.portUsed}) melebihi kapasitas model (${capacity}).`;
+  }
+
+  return null;
+}
+
+/**
+ * Monitoring hanya masuk akal untuk perangkat yang punya IP. Perangkat pasif
+ * seperti ODP/ODC tidak di-ping, jadi konfigurasi monitoring ditolak.
+ */
+export function deviceMonitoringError(
+  model: DeviceModelCapacity,
+  monitoring: DeviceMonitoringInput | null | undefined,
+): string | null {
+  if (!monitoring) return null;
+
+  if (!model.requiresIp) {
+    return "Monitoring hanya tersedia untuk tipe perangkat yang membutuhkan IP.";
   }
 
   return null;
