@@ -8,9 +8,11 @@ import catalogRoutes from "./routes/catalog.ts";
 import cablesRoutes from "./routes/cables.ts";
 import devicesRoutes from "./routes/devices.ts";
 import health from "./routes/health.ts";
+import monitoringRoutes from "./routes/monitoring.ts";
 import rolesRoutes from "./routes/roles.ts";
 import uploadsRoutes from "./routes/uploads.ts";
 import type { AppEnv } from "./types.ts";
+import { startMonitoring } from "./services/monitor.ts";
 
 export const app = new Hono<AppEnv>();
 
@@ -41,5 +43,9 @@ app.route("/catalog", catalogRoutes);
 app.route("/devices", devicesRoutes);
 app.route("/cables", cablesRoutes);
 app.route("/uploads", uploadsRoutes);
+app.route("/", monitoringRoutes);
+
+// Start monitoring scheduler
+startMonitoring();
 
 export default app;

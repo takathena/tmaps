@@ -34,6 +34,12 @@ const envSchema = z.object({
     .positive("MAX_UPLOAD_MB harus lebih dari 0.")
     .max(100, "MAX_UPLOAD_MB maksimal 100.")
     .default(5),
+  
+  // Monitoring (Fase 3)
+  PING_TICK_SECONDS: z.coerce.number().positive().default(5),
+  PING_TIMEOUT_MS: z.coerce.number().positive().default(2000),
+  PING_CONCURRENCY: z.coerce.number().positive().default(10),
+  PING_LOG_RETENTION_DAYS: z.coerce.number().positive().default(30),
 });
 
 const parsed = envSchema.safeParse(process.env);
