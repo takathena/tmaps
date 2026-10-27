@@ -304,17 +304,14 @@ textarea:focus-visible {
   padding: 4px;
 }
 
-.overlay-top-right {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 25;
-}
-
 /* ---------- Notification Bell ---------- */
 
 .notification-bell {
-  position: relative;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .notification-badge {
@@ -331,12 +328,14 @@ textarea:focus-visible {
   font-weight: 600;
   line-height: 18px;
   text-align: center;
+  pointer-events: none;
 }
 
 .notification-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -344,6 +343,7 @@ textarea:focus-visible {
   max-width: calc(100vw - 32px);
   max-height: 480px;
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .notification-dropdown-header {
@@ -2912,11 +2912,6 @@ textarea:focus-visible {
 
   .form-split {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .overlay-top-right {
-    top: 12px;
-    right: 12px;
   }
 
   .overlay-top-left .brand-name {

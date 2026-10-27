@@ -1,26 +1,19 @@
-import { Bell, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage, type Notification } from "../lib/api";
 
 type NotificationBellProps = {
+  open: boolean;
+  unreadCount: number;
+  onOpenChange: (open: boolean) => void;
+  onUnreadCountChange: (count: number) => void;
   onNotificationClick: (deviceId: string) => void;
 };
 
-export function NotificationBell({ onNotificationClick }: NotificationBellProps) {
-  const [open, setOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+export function NotificationBell({ open, unreadCount, onOpenChange, onUnreadCountChange, onNotificationClick }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  const loadUnreadCount = useCallback(async () => {
-    try {
-      const response = await api.getUnreadCount();
-      setUnreadCount(response.count);
-    } catch {
-      // Silent fail untuk polling
-    }
-  }, []);
 
   const loadNotifications = useCallback(async () => {
     setLoading(true);
@@ -34,48 +27,6 @@ export function NotificationBell({ onNotificationClick }: NotificationBellProps)
     }
   }, []);
 
-  // Polling unread count
-  useEffect(() => {
-    const interval = Number(import.meta.env.VITE_STATUS_POLL_INTERVAL_MS) || 3000;
-    let timer: number | null = null;
-
-    function poll() {
-      void loadUnreadCount();
-    }
-
-    function startPolling() {
-      timer = window.setInterval(poll, interval);
-    }
-
-    function stopPolling() {
-      if (timer !== null) {
-        window.clearInterval(timer);
-        timer = null;
-      }
-    }
-
-    function handleVisibilityChange() {
-      if (document.hidden) {
-        stopPolling();
-      } else {
-        poll();
-        startPolling();
-      }
-    }
-
-    if (!document.hidden) {
-      poll();
-      startPolling();
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      stopPolling();
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [loadUnreadCount]);
-
   // Load notifications saat dropdown dibuka
   useEffect(() => {
     if (open) {
@@ -87,7 +38,7 @@ export function NotificationBell({ onNotificationClick }: NotificationBellProps)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpen(false);
+        onOpenChange(false);
       }
     }
 
@@ -95,16 +46,16 @@ export function NotificationBell({ onNotificationClick }: NotificationBellProps)
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [open]);
+  }, [open, onOpenChange]);
 
   async function handleNotificationClick(notification: Notification) {
-    setOpen(false);
+    onOpenChange(false);
     onNotificationClick(notification.deviceId);
 
     if (!notification.isRead) {
       try {
         await api.markNotificationRead(notification.id);
-        setUnreadCount((c) => Math.max(0, c - 1));
+        onUnreadCountChange(Math.max(0, unreadCount - 1));
         setNotifications((items) =>
           items.map((item) =>
             item.id === notification.id ? { ...item, isRead: true } : item
@@ -119,7 +70,7 @@ export function NotificationBell({ onNotificationClick }: NotificationBellProps)
   async function handleMarkAllRead() {
     try {
       await api.markAllNotificationsRead();
-      setUnreadCount(0);
+      onUnreadCountChange(0);
       setNotifications((items) =>
         items.map((item) => ({ ...item, isRead: true }))
       );
@@ -130,15 +81,7 @@ export function NotificationBell({ onNotificationClick }: NotificationBellProps)
 
   return (
     <div className="notification-bell" ref={dropdownRef}>
-      <button
-        type="button"
-        className="icon-button"
-        aria-label={`Notifikasi${unreadCount > 0 ? ` (${unreadCount} belum dibaca)` : ""}`}
-        onClick={() => setOpen(!open)}
-      >
-        <Bell size={20} strokeWidth={2} aria-hidden="true" />
-        {unreadCount > 0 ? <span className="notification-badge">{unreadCount}</span> : null}
-      </button>
+      {unreadCount > 0 ? <span className="notification-badge">{unreadCount}</span> : null}
 
       {open ? (
         <div className="notification-dropdown panel">

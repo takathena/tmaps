@@ -41,16 +41,20 @@ const MORE_TOOL: Tool = { id: "more", label: "More", icon: ChevronUp };
 type ToolbarProps = {
   activeTool: ToolId;
   clusteringEnabled: boolean;
+  notificationOpen: boolean;
+  unreadCount: number;
   onSelect: (tool: ToolId) => void;
 };
 
 function ToolButton({
   tool,
   active,
+  badge,
   onSelect,
 }: {
   tool: Tool;
   active: boolean;
+  badge?: number;
   onSelect: (tool: ToolId) => void;
 }) {
   const Icon = tool.icon;
@@ -66,18 +70,28 @@ function ToolButton({
       onClick={() => onSelect(tool.id)}
     >
       <Icon size={20} strokeWidth={2} aria-hidden="true" />
+      {badge !== undefined && badge > 0 ? (
+        <span className="notification-badge">{badge}</span>
+      ) : null}
     </button>
   );
 }
 
-export function Toolbar({ activeTool, clusteringEnabled, onSelect }: ToolbarProps) {
+export function Toolbar({ activeTool, clusteringEnabled, notificationOpen, unreadCount, onSelect }: ToolbarProps) {
   return (
     <div className="toolbar panel" role="toolbar" aria-label="Alat peta">
       {TOOLS.map((tool) => (
         <ToolButton
           key={tool.id}
           tool={tool}
-          active={tool.id === "clustering" ? clusteringEnabled : activeTool === tool.id}
+          active={
+            tool.id === "clustering"
+              ? clusteringEnabled
+              : tool.id === "notifications"
+                ? notificationOpen
+                : activeTool === tool.id
+          }
+          badge={tool.id === "notifications" ? unreadCount : undefined}
           onSelect={onSelect}
         />
       ))}

@@ -108,6 +108,8 @@ export function MapShell({ user, onLogout }: MapShellProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [filters, setFilters] = useState<Array<{ type: "deviceType" | "tag"; id: string; name: string }>>([]);
   const [clusteringEnabled, setClusteringEnabled] = useState(() => {
     const saved = localStorage.getItem("clusteringEnabled");
@@ -176,6 +178,53 @@ export function MapShell({ user, onLogout }: MapShellProps) {
         // Polling gagal tidak mengganggu UI
       } finally {
         polling = false;
+      }
+    }
+
+    function startPolling() {
+      timer = window.setInterval(() => void poll(), interval);
+    }
+
+    function stopPolling() {
+      if (timer !== null) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        void poll();
+        startPolling();
+      }
+    }
+
+    if (!document.hidden) {
+      void poll();
+      startPolling();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  // Polling unread count
+  useEffect(() => {
+    const interval = Number(import.meta.env.VITE_STATUS_POLL_INTERVAL_MS) || 3000;
+    let timer: number | null = null;
+
+    async function poll() {
+      try {
+        const response = await api.getUnreadCount();
+        setUnreadCount(response.count);
+      } catch {
+        // Silent fail
       }
     }
 
@@ -498,6 +547,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
     }
 
     // Open sidebar
+    setNotificationOpen(false);
     setActiveTool("select");
     setCatalogTab(null);
     setCreateLocation(null);
@@ -511,6 +561,11 @@ export function MapShell({ user, onLogout }: MapShellProps) {
   function handleToolSelect(tool: ToolId) {
     if (tool === "search") {
       setSearchOpen(!searchOpen);
+      return;
+    }
+
+    if (tool === "notifications") {
+      setNotificationOpen(!notificationOpen);
       return;
     }
 
@@ -629,10 +684,6 @@ export function MapShell({ user, onLogout }: MapShellProps) {
           <Brand />
           <MainMenu onLogout={onLogout} onOpenCatalog={openCatalog} />
         </header>
-
-        <div className="overlay-top-right">
-          <NotificationBell onNotificationClick={handleNotificationClick} />
-        </div>
 
         {searchOpen ? (
           <SearchPanel
@@ -778,8 +829,19 @@ export function MapShell({ user, onLogout }: MapShellProps) {
           <Toolbar
             activeTool={activeTool}
             clusteringEnabled={clusteringEnabled}
+            notificationOpen={notificationOpen}
+            unreadCount={unreadCount}
             onSelect={handleToolSelect}
           />
+          {notificationOpen ? (
+            <NotificationBell
+              open={notificationOpen}
+              unreadCount={unreadCount}
+              onOpenChange={setNotificationOpen}
+              onUnreadCountChange={setUnreadCount}
+              onNotificationClick={handleNotificationClick}
+            />
+          ) : null}
         </div>
       </div>
     </div>
