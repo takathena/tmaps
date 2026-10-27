@@ -25,6 +25,15 @@ const envSchema = z.object({
   TWO_FA_PENDING_TTL_MINUTES: z.coerce.number().int().positive().default(5),
   TWO_FA_LOCK_MINUTES: z.coerce.number().int().positive().default(15),
   TWO_FA_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+
+  // Keputusan #5: gambar disimpan di volume lokal, bukan object storage.
+  // Di Docker Compose nilainya diarahkan ke /data/uploads (volume `uploads`).
+  UPLOAD_DIR: z.string().trim().min(1).default("./storage/uploads"),
+  MAX_UPLOAD_MB: z.coerce
+    .number()
+    .positive("MAX_UPLOAD_MB harus lebih dari 0.")
+    .max(100, "MAX_UPLOAD_MB maksimal 100.")
+    .default(5),
 });
 
 const parsed = envSchema.safeParse(process.env);

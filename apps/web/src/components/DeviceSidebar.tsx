@@ -6,6 +6,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Upload,
   X,
 } from "lucide-react";
 import {
@@ -18,6 +19,7 @@ import {
 } from "react";
 import {
   api,
+  assetUrl,
   errorMessage,
   type AuthUser,
   type DeviceDetail,
@@ -115,6 +117,14 @@ export function DeviceSidebar({
   const [removingTagId, setRemovingTagId] = useState<string | null>(null);
   const [tagError, setTagError] = useState<string | null>(null);
 
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadCaption, setUploadCaption] = useState("");
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [closing, setClosing] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
@@ -157,6 +167,17 @@ export function DeviceSidebar({
     const timeout = window.setTimeout(() => setDescriptionSaved(false), 3000);
     return () => window.clearTimeout(timeout);
   }, [descriptionSaved]);
+
+  useEffect(() => {
+    if (!uploadFile) {
+      setUploadPreview(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(uploadFile);
+    setUploadPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [uploadFile]);
 
   const requestClose = useCallback(() => {
     if (closing) return;
@@ -265,6 +286,44 @@ export function DeviceSidebar({
       setTagError(errorMessage(error));
     } finally {
       setRemovingTagId(null);
+    }
+  }
+
+  function resetUploadForm() {
+    if (uploading) return;
+
+    setUploadOpen(false);
+    setUploadFile(null);
+    setUploadCaption("");
+    setUploadError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleUploadImage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!device || !canWrite || !uploadFile) return;
+
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      const response = await api.uploadDeviceImage(
+        device.id,
+        uploadFile,
+        uploadCaption,
+      );
+      setDevice((current) =>
+        current ? { ...current, images: response.images } : current,
+      );
+      setUploadOpen(false);
+      setUploadFile(null);
+      setUploadCaption("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      void loadLogs();
+    } catch (error) {
+      setUploadError(errorMessage(error));
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -557,13 +616,190 @@ export function DeviceSidebar({
             </section>
 
             <section className="sidebar-section" aria-label="Galeri">
-              <h3 className="sidebar-section-title">Galeri</h3>
-              <div className="sidebar-gallery-empty">
-                <ImageIcon size={20} strokeWidth={2} aria-hidden="true" />
-                <span>
-                  Belum ada gambar. Foto referensi katalog dan foto instalasi
-                  dapat diunggah pada langkah berikutnya.
+              <div className="sidebar-section-heading">
+                <h3 className="sidebar-section-title">Galeri</h3>
+                {canWrite && !uploadOpen ? (
+                  <button
+                    type="button"
+                    className="btn-secondary btn-small"
+                    onClick={() => {
+                      setUploadError(null);
+                      setUploadOpen(true);
+                    }}
+                  >
+                    <Plus size={20} strokeWidth={2} aria-hidden="true" />
+                    Tambah Gambar
+                  </button>
+                ) : null}
+              </div>
+
+              {canWrite && uploadOpen ? (
+                <form
+                  className="gallery-upload"
+                  aria-label="Tambah gambar instalasi"
+                  onSubmit={(event) => void handleUploadImage(event)}
+                >
+                  <div className="gallery-upload-head">
+                    <strong>Tambah gambar instalasi</strong>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label="Tutup form gambar"
+                      title="Tutup form gambar"
+                      disabled={uploading}
+                      onClick={resetUploadForm}
+                    >
+                      <X size={20} strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  <label className="field">
+                    <span className="field-label">File gambar</span>
+                    <input
+                      ref={fileInputRef}
+                      className="gallery-file-input"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      disabled={uploading}
+                      onChange={(event) => {
+                        setUploadError(null);
+                        setUploadFile(event.target.files?.[0] ?? null);
+                      }}
+                    />
+                    <span className="field-hint">
+                      JPG, PNG, WebP, atau GIF. Ukuran maksimal mengikuti
+                      konfigurasi server.
+                    </span>
+                  </label>
+
+                  {uploadPreview ? (
+                    <div className="gallery-preview">
+                      <img
+                        src={uploadPreview}
+                        alt="Pratinjau gambar yang akan diunggah"
+                      />
+                    </div>
+                  ) : null}
+
+                  <label className="field">
+                    <span className="field-label">Caption (opsional)</span>
+                    <input
+                      type="text"
+                      value={uploadCaption}
+                      onChange={(event) => {
+                        setUploadError(null);
+                        setUploadCaption(event.target.value);
+                      }}
+                      maxLength={200}
+                      placeholder="Mis. kondisi ODP setelah instalasi"
+                      disabled={uploading}
+                    />
+                  </label>
+
+                  {uploadError ? <ErrorNotice message={uploadError} /> : null}
+
+                  <div className="gallery-upload-actions">
+                    <button
+                      type="button"
+                      className="btn-link"
+                      onClick={resetUploadForm}
+                      disabled={uploading}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-primary btn-small"
+                      disabled={!uploadFile || uploading}
+                    >
+                      {uploading ? (
+                        <Loader2
+                          size={20}
+                          className="spin"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Upload size={20} strokeWidth={2} aria-hidden="true" />
+                      )}
+                      {uploading ? "Mengunggah..." : "Unggah gambar"}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+
+              <div className="sidebar-gallery-block">
+                <span className="sidebar-gallery-label">
+                  Foto referensi katalog
                 </span>
+                {device.deviceModel.referenceImageUrl ? (
+                  <a
+                    className="gallery-reference"
+                    href={assetUrl(device.deviceModel.referenceImageUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Buka foto referensi katalog di tab baru"
+                  >
+                    <img
+                      src={assetUrl(device.deviceModel.referenceImageUrl)}
+                      alt={`Foto referensi ${device.deviceModel.vendor} ${device.deviceModel.modelName}`}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </a>
+                ) : (
+                  <p className="sidebar-muted">
+                    Model ini belum punya foto referensi di katalog.
+                  </p>
+                )}
+              </div>
+
+              <div className="sidebar-gallery-block">
+                <span className="sidebar-gallery-label">Foto instalasi</span>
+                {device.images.length > 0 ? (
+                  <ul className="gallery-grid">
+                    {device.images.map((image) => (
+                      <li key={image.id}>
+                        <figure className="gallery-item">
+                          <a
+                            href={assetUrl(image.imageUrl)}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={
+                              image.caption
+                                ? `Buka foto: ${image.caption}`
+                                : "Buka foto instalasi di tab baru"
+                            }
+                          >
+                            <img
+                              src={assetUrl(image.imageUrl)}
+                              alt={
+                                image.caption ?? "Foto instalasi perangkat"
+                              }
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          </a>
+                          <figcaption className="gallery-caption">
+                            {image.caption ? (
+                              <span>{image.caption}</span>
+                            ) : null}
+                            <time dateTime={image.uploadedAt}>
+                              {formatDate(image.uploadedAt)}
+                            </time>
+                          </figcaption>
+                        </figure>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="sidebar-gallery-empty">
+                    <ImageIcon size={20} strokeWidth={2} aria-hidden="true" />
+                    <span>
+                      Belum ada foto instalasi. Tambahkan foto kondisi
+                      perangkat di lapangan.
+                    </span>
+                  </div>
+                )}
               </div>
             </section>
 

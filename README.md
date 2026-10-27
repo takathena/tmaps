@@ -70,6 +70,11 @@ API container tetap memakai `.env` yang sama. Migrasi dan seed dijalankan dari
 host setelah database healthy. Perintah `docker compose down -v` menghapus volume
 database (dipakai hanya saat ingin memulai dari nol).
 
+Gambar upload disimpan di named volume `uploads` (di container: `/data/uploads`,
+diatur lewat `UPLOAD_DIR`). Volume ini bertahan saat `docker compose restart`
+maupun `docker compose up -d`. `docker compose down -v` juga menghapus gambar,
+jadi backup volume ini bersama volume database bila diperlukan.
+
 Admin awal dibuat dari `SEED_ADMIN_EMAIL` + `SEED_ADMIN_PASSWORD`. Role Admin
 memiliki `require_2fa = true`, sehingga login pertama akan meminta setup TOTP
 (QR ditampilkan oleh frontend, bukan di README).
@@ -223,6 +228,29 @@ Tombol **Edit perangkat** membuka form edit yang sudah ada; menutup form
 mengembalikan sidebar. Viewer tidak melihat tombol edit maupun kontrol
 deskripsi/tag.
 
+### Galeri gambar
+
+Galeri di sidebar memisahkan dua jenis foto:
+
+- **Foto referensi katalog** — diambil otomatis dari
+  `device_models.reference_image_url`; sama untuk semua instance model tersebut.
+- **Foto instalasi** — banyak foto per perangkat dari tabel `device_images`,
+  diunggah lewat tombol **Tambah Gambar**. Caption opsional (maksimal 200
+  karakter) dan waktu upload ditampilkan di bawah foto.
+
+Upload memakai `multipart/form-data` dengan field `file` dan `caption` opsional.
+API hanya menerima **JPEG, PNG, WebP, dan GIF**; tipe ditentukan dari magic bytes
+file, bukan hanya `Content-Type` dari browser, dan SVG ditolak. Ukuran maksimal
+mengikuti `MAX_UPLOAD_MB` (default 5 MB); file terlalu besar ditolak dengan status
+413 dan pesan yang menyebut batas tersebut. File disimpan dengan nama UUID di
+`UPLOAD_DIR`, sedangkan metadata disimpan di `device_images`.
+
+Gambar tidak dapat diakses publik. Endpoint `/uploads/:filename` memerlukan sesi
+login dan permission `devices:read`, sehingga URL relatif di `image_url` tetap
+aman. Menghapus perangkat ikut menghapus baris `device_images` (cascade) dan file
+fisiknya dari volume. Viewer hanya melihat galeri; Admin dan Teknisi dapat
+mengunggah.
+
 ## Endpoint Perangkat (Fase 2)
 
 | Method | Path | Akses |
@@ -230,8 +258,10 @@ deskripsi/tag.
 | GET | `/devices` | `devices:read` — daftar ringan untuk marker peta |
 | GET | `/devices/:id` | `devices:read` — detail + model + tipe + tags |
 | GET | `/devices/:id/logs` | `devices:read` — 50 riwayat terbaru |
+| POST | `/devices/:id/images` | `devices:write` — upload gambar (`file` + `caption` opsional) |
 | POST | `/devices/:id/tags` | `devices:write` — tambah/auto-create tag |
 | DELETE | `/devices/:id/tags/:tagId` | `devices:write` — lepas tag dari perangkat |
+| GET | `/uploads/:filename` | `devices:read` — sajikan file gambar, wajib sesi |
 | POST | `/devices` | `devices:write` |
 | PATCH | `/devices/:id` | `devices:write` |
 | DELETE | `/devices/:id` | `devices:delete` |
@@ -363,6 +393,19 @@ Matriks seed bawaan:
 
 `R` = read, `W` = write, `D` = delete, `–` = tidak ada akses.
 
-Keputusan #5 (storage gambar), #6 (status baca notifikasi), dan #7 (retensi
-`ping_logs`) dicatat saat fase terkait.
+### Fase 2
+
+| # | Keputusan | Pilihan |
+|---|---|---|
+| 5 | Storage gambar | **Volume lokal** (named Docker volume `uploads`, default `UPLOAD_DIR=/data/uploads` di Compose). Bukan MinIO. File disajikan lewat API yang memerlukan sesi; metadata di `device_images`. |
+
+Alasan memilih volume lokal untuk v1: tidak menambah service, kredensial, dan
+bucket initialization; kebutuhan saat ini hanya satu host dan satu API. Konsekuensinya
+backup dan pemindahan host harus menyertakan volume `uploads` bersama volume
+database. Jika kebutuhan scale-out/S3 muncul, `device_images.image_url` sudah
+berupa path relatif sehingga penyimpanan bisa diganti di belakang endpoint yang
+sama.
+
+Keputusan #6 (status baca notifikasi) dan #7 (retensi `ping_logs`) dicatat saat
+fase terkait.
 

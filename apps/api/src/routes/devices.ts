@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "../db/client.ts";
 import {
   cables,
+  deviceImages,
   deviceLogs,
   deviceModels,
   deviceTags,
@@ -13,12 +14,15 @@ import {
   monitoringConfig,
   tags,
 } from "../db/schema.ts";
+import { env } from "../env.ts";
 import {
   deviceMonitoringError,
   devicePlacementError,
   type DeviceModelCapacity,
   type DeviceMonitoringInput,
 } from "../lib/device-rules.ts";
+import { detectImageKind } from "../lib/image-rules.ts";
+import { maxUploadBytes, removeUpload, removeUploadByUrl, storeUpload } from "../lib/uploads.ts";
 import { jsonBody } from "../lib/validation.ts";
 import { requireAuth } from "../middleware/auth.ts";
 import { requirePermission } from "../middleware/permission.ts";
@@ -302,6 +306,7 @@ async function findDeviceDetail(id: string) {
   return {
     ...toDeviceDetail(row),
     tags: await findDeviceTags(id),
+    images: await findDeviceImages(id),
   };
 }
 
@@ -312,6 +317,19 @@ async function findDeviceTags(deviceId: string) {
     .innerJoin(tags, eq(deviceTags.tagId, tags.id))
     .where(eq(deviceTags.deviceId, deviceId))
     .orderBy(tags.name);
+}
+
+async function findDeviceImages(deviceId: string) {
+  return db
+    .select({
+      id: deviceImages.id,
+      imageUrl: deviceImages.imageUrl,
+      caption: deviceImages.caption,
+      uploadedAt: deviceImages.uploadedAt,
+    })
+    .from(deviceImages)
+    .where(eq(deviceImages.deviceId, deviceId))
+    .orderBy(desc(deviceImages.uploadedAt), desc(deviceImages.id));
 }
 
 async function assertDeviceExists(id: string): Promise<void> {
@@ -465,6 +483,115 @@ devicesRoutes.delete(
     });
 
     return c.json({ tags: await findDeviceTags(id) });
+  },
+);
+
+devicesRoutes.post(
+  "/:id/images",
+  requirePermission("devices", "write"),
+  async (c) => {
+    const id = uuidParam(c.req.param("id"), "Perangkat");
+    await assertDeviceExists(id);
+
+    const tooLargeMessage = `Ukuran file maksimal ${env.MAX_UPLOAD_MB} MB.`;
+    const contentLength = Number(c.req.header("content-length") ?? "0");
+
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > maxUploadBytes + 1024 * 1024
+    ) {
+      throw new HTTPException(413, { message: tooLargeMessage });
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.parseBody();
+    } catch {
+      throw new HTTPException(400, {
+        message: "Body upload tidak valid. Kirim file sebagai multipart/form-data.",
+      });
+    }
+
+    const file = body.file;
+    if (!(file instanceof File)) {
+      throw new HTTPException(400, { message: "File gambar wajib diunggah." });
+    }
+
+    if (file.size === 0) {
+      throw new HTTPException(400, { message: "File gambar kosong." });
+    }
+
+    if (file.size > maxUploadBytes) {
+      throw new HTTPException(413, { message: tooLargeMessage });
+    }
+
+    const captionValue = body.caption;
+    if (captionValue !== undefined && typeof captionValue !== "string") {
+      throw new HTTPException(400, { message: "Caption tidak valid." });
+    }
+
+    const caption = (captionValue ?? "").trim();
+    if (caption.length > 200) {
+      throw new HTTPException(400, {
+        message: "Caption maksimal 200 karakter.",
+      });
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const kind = detectImageKind(bytes);
+
+    if (!kind) {
+      throw new HTTPException(400, {
+        message: "File harus berupa gambar JPG, PNG, WebP, atau GIF.",
+      });
+    }
+
+    const filename = await storeUpload(bytes, kind);
+    const imageUrl = `/uploads/${filename}`;
+    const user = c.get("user");
+
+    let image: {
+      id: string;
+      imageUrl: string;
+      caption: string | null;
+      uploadedAt: Date;
+    };
+
+    try {
+      image = await db.transaction(async (tx) => {
+        const [created] = await tx
+          .insert(deviceImages)
+          .values({
+            deviceId: id,
+            imageUrl,
+            caption: caption.length > 0 ? caption : null,
+          })
+          .returning({
+            id: deviceImages.id,
+            imageUrl: deviceImages.imageUrl,
+            caption: deviceImages.caption,
+            uploadedAt: deviceImages.uploadedAt,
+          });
+
+        if (!created) {
+          throw new HTTPException(500, { message: "Gagal menyimpan gambar." });
+        }
+
+        await tx.insert(deviceLogs).values({
+          deviceId: id,
+          action: "update",
+          changedBy: user.email,
+        });
+
+        return created;
+      });
+    } catch (error) {
+      // Jangan tinggalkan file yatim bila record database gagal dibuat.
+      await removeUpload(filename);
+      throw error;
+    }
+
+    return c.json({ image, images: await findDeviceImages(id) }, 201);
   },
 );
 
@@ -679,6 +806,13 @@ devicesRoutes.delete("/:id", requirePermission("devices", "delete"), async (c) =
     });
   }
 
+  // Simpan URL sebelum baris device_images ikut terhapus lewat cascade,
+  // supaya file di volume lokal tidak tertinggal sebagai sampah.
+  const imageRows = await db
+    .select({ imageUrl: deviceImages.imageUrl })
+    .from(deviceImages)
+    .where(eq(deviceImages.deviceId, id));
+
   await db.transaction(async (tx) => {
     await tx.insert(deviceLogs).values({
       deviceId: id,
@@ -687,6 +821,10 @@ devicesRoutes.delete("/:id", requirePermission("devices", "delete"), async (c) =
     });
     await tx.delete(devices).where(eq(devices.id, id));
   });
+
+  for (const image of imageRows) {
+    await removeUploadByUrl(image.imageUrl);
+  }
 
   return c.body(null, 204);
 });

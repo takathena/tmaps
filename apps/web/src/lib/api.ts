@@ -115,6 +115,13 @@ export type DeviceLogEntry = {
   createdAt: string;
 };
 
+export type DeviceImage = {
+  id: string;
+  imageUrl: string;
+  caption: string | null;
+  uploadedAt: string;
+};
+
 export type DeviceDetail = {
   id: string;
   name: string;
@@ -147,6 +154,7 @@ export type DeviceDetail = {
   };
   monitoring: DeviceMonitoringConfig | null;
   tags: DeviceTag[];
+  images: DeviceImage[];
 };
 
 export type DeviceCreateInput = {
@@ -226,9 +234,17 @@ export class ApiError extends Error {
 
 const baseUrl = (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/+$/, "");
 
+/** URL absolut untuk file yang disajikan API (mis. gambar upload). */
+export function assetUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  return `${baseUrl}${suffix}`;
+}
+
 type RequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
+  formData?: FormData;
 };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -240,7 +256,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (options.body !== undefined) {
+  if (options.body !== undefined && options.formData === undefined) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -250,7 +266,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       method: options.method ?? "GET",
       credentials: "include",
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body:
+        options.formData ??
+        (options.body === undefined ? undefined : JSON.stringify(options.body)),
     });
   } catch {
     throw new ApiError(0, "Tidak dapat terhubung ke server. Periksa koneksi lalu coba lagi.");
@@ -341,6 +359,16 @@ export const api = {
     request<{ tags: DeviceTag[] }>(`/devices/${id}/tags/${tagId}`, {
       method: "DELETE",
     }),
+  uploadDeviceImage: (id: string, file: File, caption: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (caption.trim().length > 0) formData.append("caption", caption.trim());
+
+    return request<{ image: DeviceImage; images: DeviceImage[] }>(
+      `/devices/${id}/images`,
+      { method: "POST", formData },
+    );
+  },
   createDevice: (body: DeviceCreateInput) =>
     request<{ device: DeviceDetail }>("/devices", { method: "POST", body }),
   updateDevice: (id: string, body: DeviceUpdateInput) =>
