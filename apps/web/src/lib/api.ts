@@ -87,6 +87,15 @@ export type CableTypeInput = {
 
 export type DeviceStatus = "active" | "offline" | "unmonitored";
 
+export type DevicePingStatus = {
+  id: string;
+  status: DeviceStatus;
+  monitoringEnabled: boolean;
+  isUp: boolean | null;
+  latencyMs: number | null;
+  checkedAt: string | null;
+};
+
 export type DeviceSummary = {
   id: string;
   name: string;
@@ -374,6 +383,9 @@ export const api = {
   updateDevice: (id: string, body: DeviceUpdateInput) =>
     request<{ device: DeviceDetail }>(`/devices/${id}`, { method: "PATCH", body }),
   deleteDevice: (id: string) => request<void>(`/devices/${id}`, { method: "DELETE" }),
+  
+  getDeviceStatuses: () =>
+    request<{ status: string; devices: DevicePingStatus[]; timestamp: string }>("/health/status"),
 
   getCables: () => request<{ cables: CableSummary[] }>("/cables"),
   getCable: (id: string) => request<{ cable: CableDetail }>(`/cables/${id}`),
