@@ -1,4 +1,5 @@
 import {
+  Bell,
   Cable,
   ChevronUp,
   Hand,
@@ -16,6 +17,7 @@ export type ToolId =
   | "add-cable"
   | "search"
   | "clustering"
+  | "notifications"
   | "more";
 
 type Tool = {
@@ -31,6 +33,7 @@ const TOOLS: Tool[] = [
   { id: "add-cable", label: "+ Kabel", icon: Cable },
   { id: "search", label: "Search", icon: Search },
   { id: "clustering", label: "Clustering", icon: Layers },
+  { id: "notifications", label: "Notifikasi", icon: Bell },
 ];
 
 const MORE_TOOL: Tool = { id: "more", label: "More", icon: ChevronUp };

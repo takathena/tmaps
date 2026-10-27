@@ -20,7 +20,6 @@ import {
 import { DeviceSidebar } from "./DeviceSidebar";
 import { MainMenu } from "./MainMenu";
 import { MapView } from "./MapView";
-import { NotificationBell } from "./NotificationBell";
 import { Toolbar, type ToolId } from "./Toolbar";
 
 type MapShellProps = {
@@ -467,10 +466,6 @@ export function MapShell({ user, onLogout }: MapShellProps) {
           <Brand />
           <MainMenu onLogout={onLogout} onOpenCatalog={openCatalog} />
         </header>
-
-        <div className="panel overlay-top-right">
-          <NotificationBell />
-        </div>
 
         {sidebarId && !editing ? (
           <DeviceSidebar
