@@ -308,10 +308,13 @@ textarea:focus-visible {
 
 .notification-bell {
   position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  pointer-events: none;
+  bottom: 16px;
+  left: 16px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  pointer-events: auto;
 }
 
 .notification-badge {
@@ -332,16 +335,16 @@ textarea:focus-visible {
 }
 
 .notification-dropdown {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  bottom: 0;
+  left: 0;
   z-index: 30;
   display: flex;
   flex-direction: column;
   width: 360px;
   max-width: calc(100vw - 32px);
-  max-height: 480px;
+  max-height: calc(100vh - 100px);
+  margin-bottom: 8px;
   overflow: hidden;
   pointer-events: auto;
 }

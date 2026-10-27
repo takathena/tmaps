@@ -833,16 +833,17 @@ export function MapShell({ user, onLogout }: MapShellProps) {
             unreadCount={unreadCount}
             onSelect={handleToolSelect}
           />
-          {notificationOpen ? (
-            <NotificationBell
-              open={notificationOpen}
-              unreadCount={unreadCount}
-              onOpenChange={setNotificationOpen}
-              onUnreadCountChange={setUnreadCount}
-              onNotificationClick={handleNotificationClick}
-            />
-          ) : null}
         </div>
+
+        {notificationOpen ? (
+          <NotificationBell
+            open={notificationOpen}
+            unreadCount={unreadCount}
+            onOpenChange={setNotificationOpen}
+            onUnreadCountChange={setUnreadCount}
+            onNotificationClick={handleNotificationClick}
+          />
+        ) : null}
       </div>
     </div>
   );
