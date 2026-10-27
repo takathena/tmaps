@@ -5,6 +5,8 @@ import { usesPonCapacity } from "./catalog-rules.ts";
  * Konteks model + tipe yang dibutuhkan untuk memvalidasi penempatan perangkat.
  * Dipakai API dan unit test agar aturan IP/kapasitas tidak tersebar.
  */
+import { isValidIpAddress } from "./ip-validation.ts";
+
 export type DeviceModelCapacity = {
   typeName: string;
   category: string;
@@ -50,8 +52,9 @@ export function devicePlacementError(
   input: DevicePlacementInput,
 ): string | null {
   if (input.ipAddress !== null) {
-    if (input.ipAddress.trim().length === 0 || isIP(input.ipAddress.trim()) === 0) {
-      return "IP address tidak valid.";
+    const trimmed = input.ipAddress.trim();
+    if (trimmed.length === 0 || !isValidIpAddress(trimmed)) {
+      return "IP address tidak valid. Hanya format IPv4 atau IPv6 yang diizinkan.";
     }
   } else if (model.requiresIp) {
     return "IP address wajib diisi untuk tipe perangkat ini.";

@@ -15,12 +15,7 @@ import {
   tags,
 } from "../db/schema.ts";
 import { env } from "../env.ts";
-import {
-  deviceMonitoringError,
-  devicePlacementError,
-  type DeviceModelCapacity,
-  type DeviceMonitoringInput,
-} from "../lib/device-rules.ts";
+import { deviceMonitoringError, devicePlacementError, type DeviceModelCapacity, type DeviceMonitoringInput } from "../lib/device-rules.ts";
 import { detectImageKind } from "../lib/image-rules.ts";
 import { maxUploadBytes, removeUpload, removeUploadByUrl, storeUpload } from "../lib/uploads.ts";
 import { jsonBody } from "../lib/validation.ts";

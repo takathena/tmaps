@@ -406,6 +406,29 @@ database. Jika kebutuhan scale-out/S3 muncul, `device_images.image_url` sudah
 berupa path relatif sehingga penyimpanan bisa diganti di belakang endpoint yang
 sama.
 
-Keputusan #6 (status baca notifikasi) dan #7 (retensi `ping_logs`) dicatat saat
-fase terkait.
+### Fase 3
+
+| # | Keputusan | Pilihan |
+|---|---|---|
+| 6 | Status baca notifikasi | **Global** (satu notifikasi, satu status baca). Siapa saja tandai dibaca, badge semua user berkurang. Skema `notifications` tanpa `userId`, pakai kolom `isRead` boolean. |
+| 7 | Retensi `ping_logs` | **30 hari** (nilai dari `PING_LOG_RETENTION_DAYS`). Job cleanup berjalan tiap tick scheduler, menghapus log lebih lama dari batas. |
+
+Alasan notifikasi global: perubahan status perangkat (down/up) bersifat faktual dan
+berlaku untuk semua; tidak ada alasan untuk membuat duplikat per user. Badge
+berkurang begitu ada yang tandai dibaca, mengurangi noise notifikasi yang sama.
+Retensi 30 hari cukup untuk audit jangka pendek; log lebih lama dapat diekspor
+bila diperlukan analisis historis.
+
+## Keamanan
+
+- **Password**: Hash dengan `Bun.password` (bcrypt/argon2 otomatis).
+- **Sesi**: Token opaque acak (32 byte), disimpan hash SHA-256 di DB, cookie `HttpOnly` `SameSite=Lax`.
+- **2FA**: Secret TOTP dienkripsi AES-256-GCM dengan kunci `TOTP_ENCRYPTION_KEY`. Lock 15 menit setelah 5 percobaan gagal.
+- **IP validation**: IP address divalidasi ketat sebelum dipakai di `spawn('ping', ...)` untuk cegah command injection. Hanya karakter valid IPv4/IPv6.
+- **Upload**: Magic bytes checked (bukan hanya `Content-Type`), SVG ditolak, max size dari `.env`.
+- **Permission**: Setiap endpoint cek permission resource+action di middleware; role Viewer read-only, Teknisi write devices/cables, Admin full.
+- **CORS**: Origin whitelist dari `.env`, tidak accept `*`.
+- **Audit**: `device_logs` mencatat semua create/update/delete dengan email user.
+
+Tidak ada rate limit HTTP global di v1 (lock 2FA sudah cukup untuk autentikasi). Tambahkan reverse proxy dengan rate limit bila deploy ke internet publik.
 
