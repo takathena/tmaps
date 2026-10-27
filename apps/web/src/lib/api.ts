@@ -124,6 +124,52 @@ export type DeviceLogEntry = {
   createdAt: string;
 };
 
+export type PingLog = {
+  id: string;
+  deviceId: string;
+  isUp: boolean;
+  latencyMs: number | null;
+  checkedAt: string;
+};
+
+export type Notification = {
+  id: string;
+  userId: string;
+  deviceId: string;
+  isUp: boolean;
+  message: string;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type SearchResultDevice = {
+  id: string;
+  name: string;
+  ipAddress: string | null;
+  latitude: number;
+  longitude: number;
+  typeName: string;
+  modelName: string;
+  vendor: string;
+};
+
+export type SearchResultType = {
+  id: string;
+  name: string;
+  icon: string;
+};
+
+export type SearchResultTag = {
+  id: string;
+  name: string;
+};
+
+export type SearchResults = {
+  devices: SearchResultDevice[];
+  types: SearchResultType[];
+  tags: SearchResultTag[];
+};
+
 export type DeviceImage = {
   id: string;
   imageUrl: string;
@@ -386,6 +432,24 @@ export const api = {
   
   getDeviceStatuses: () =>
     request<{ status: string; devices: DevicePingStatus[]; timestamp: string }>("/health/status"),
+
+  getDevicePingLogs: (id: string, limit = 50) =>
+    request<{ logs: PingLog[] }>(`/devices/${id}/ping-logs?limit=${limit}`),
+
+  getNotifications: () =>
+    request<{ notifications: Notification[] }>("/notifications"),
+
+  getUnreadCount: () =>
+    request<{ count: number }>("/notifications/unread-count"),
+
+  markNotificationRead: (id: string) =>
+    request<{ notification: Notification }>(`/notifications/${id}/read`, { method: "POST" }),
+
+  markAllNotificationsRead: () =>
+    request<{ success: boolean }>("/notifications/mark-all-read", { method: "POST" }),
+
+  search: (query: string) =>
+    request<{ results: SearchResults }>(`/search?q=${encodeURIComponent(query)}`),
 
   getCables: () => request<{ cables: CableSummary[] }>("/cables"),
   getCable: (id: string) => request<{ cable: CableDetail }>(`/cables/${id}`),

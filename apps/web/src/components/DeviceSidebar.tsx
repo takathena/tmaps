@@ -17,6 +17,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import Chart from "react-apexcharts";
 import {
   api,
   assetUrl,
@@ -25,6 +26,7 @@ import {
   type DeviceDetail,
   type DeviceLogEntry,
   type DeviceStatus,
+  type PingLog,
 } from "../lib/api";
 import { usesPonCapacity } from "../lib/catalog";
 import { getDeviceIcon } from "../lib/device-icons";
@@ -107,6 +109,10 @@ export function DeviceSidebar({
   const [logsLoading, setLogsLoading] = useState(true);
   const [logsError, setLogsError] = useState<string | null>(null);
 
+  const [pingLogs, setPingLogs] = useState<PingLog[]>([]);
+  const [pingLogsLoading, setPingLogsLoading] = useState(true);
+  const [pingLogsError, setPingLogsError] = useState<string | null>(null);
+
   const [description, setDescription] = useState("");
   const [savingDescription, setSavingDescription] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
@@ -157,10 +163,25 @@ export function DeviceSidebar({
     }
   }, [deviceId]);
 
+  const loadPingLogs = useCallback(async () => {
+    setPingLogsLoading(true);
+    setPingLogsError(null);
+
+    try {
+      const response = await api.getDevicePingLogs(deviceId, 10);
+      setPingLogs(response.logs);
+    } catch (error) {
+      setPingLogsError(errorMessage(error));
+    } finally {
+      setPingLogsLoading(false);
+    }
+  }, [deviceId]);
+
   useEffect(() => {
     void loadDevice();
     void loadLogs();
-  }, [loadDevice, loadLogs]);
+    void loadPingLogs();
+  }, [loadDevice, loadLogs, loadPingLogs]);
 
   useEffect(() => {
     if (!descriptionSaved) return;
@@ -469,17 +490,173 @@ export function DeviceSidebar({
 
             <section className="sidebar-section" aria-label="Status monitoring">
               <h3 className="sidebar-section-title">Monitoring</h3>
-              <div className="sidebar-monitoring">
-                <Activity size={20} strokeWidth={2} aria-hidden="true" />
-                <div>
-                  <strong>Belum dimonitor</strong>
-                  <span>
-                    {device.monitoring?.enabled
-                      ? `Interval ${device.monitoring.intervalSeconds} detik sudah disiapkan. Mesin ping aktif di Fase 3.`
-                      : "Aktifkan lewat Edit perangkat. Mesin ping aktif di Fase 3."}
-                  </span>
+              {device.monitoring?.enabled ? (
+                <div className="sidebar-monitoring-active">
+                  <div className="sidebar-info">
+                    <div className="sidebar-info-row">
+                      <dt>Status</dt>
+                      <dd>
+                        <span className="device-status" data-status={device.status}>
+                          <span className="device-status-dot" aria-hidden="true" />
+                          {statusLabels[device.status]}
+                        </span>
+                      </dd>
+                    </div>
+                    {pingLogs.length > 0 && pingLogs[0] ? (
+                      <>
+                        <div className="sidebar-info-row">
+                          <dt>Latency</dt>
+                          <dd>
+                            {pingLogs[0].latencyMs !== null
+                              ? `${pingLogs[0].latencyMs} ms`
+                              : "—"}
+                          </dd>
+                        </div>
+                        <div className="sidebar-info-row">
+                          <dt>Cek terakhir</dt>
+                          <dd>{formatDateTime(pingLogs[0].checkedAt)}</dd>
+                        </div>
+                      </>
+                    ) : null}
+                    <div className="sidebar-info-row">
+                      <dt>Interval</dt>
+                      <dd>{device.monitoring.intervalSeconds} detik</dd>
+                    </div>
+                  </div>
+
+                  {pingLogsLoading ? (
+                    <div className="sidebar-inline-state" role="status">
+                      <Loader2 size={20} className="spin" aria-hidden="true" />
+                      <span>Memuat riwayat ping...</span>
+                    </div>
+                  ) : pingLogsError ? (
+                    <ErrorNotice message={pingLogsError} />
+                  ) : pingLogs.length > 0 ? (
+                    <div className="sidebar-ping-history">
+                      <strong>Grafik latency 10 ping terakhir</strong>
+                      <Chart
+                        type="area"
+                        height={180}
+                        options={{
+                          chart: {
+                            toolbar: { show: false },
+                            zoom: { enabled: false },
+                            background: "transparent",
+                          },
+                          stroke: {
+                            curve: "smooth",
+                            width: 2,
+                          },
+                          fill: {
+                            type: "gradient",
+                            gradient: {
+                              shadeIntensity: 1,
+                              opacityFrom: 0.5,
+                              opacityTo: 0.1,
+                              stops: [0, 90, 100],
+                            },
+                          },
+                          colors: ["#4465e9"],
+                          dataLabels: { enabled: false },
+                          grid: {
+                            borderColor: "var(--color-border)",
+                            strokeDashArray: 4,
+                            xaxis: { lines: { show: false } },
+                            yaxis: { lines: { show: true } },
+                            padding: {
+                              top: 10,
+                              right: 10,
+                              bottom: 10,
+                              left: 10,
+                            },
+                          },
+                          xaxis: {
+                            categories: pingLogs
+                              .slice()
+                              .reverse()
+                              .map((log) => {
+                                const date = new Date(log.checkedAt);
+                                return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${date.getSeconds().toString().padStart(2, "0")}`;
+                              }),
+                            labels: {
+                              style: {
+                                colors: "var(--color-text-tertiary)",
+                                fontSize: "10px",
+                              },
+                            },
+                            axisBorder: { show: false },
+                            axisTicks: { show: false },
+                            tooltip: { enabled: true },
+                          },
+                          yaxis: {
+                            min: 0,
+                            forceNiceScale: true,
+                            tickAmount: 6,
+                            labels: {
+                              style: {
+                                colors: "var(--color-text-tertiary)",
+                                fontSize: "10px",
+                              },
+                              formatter: (val) => `${Math.round(val)} ms`,
+                            },
+                          },
+                          tooltip: {
+                            theme: "dark",
+                            x: {
+                              show: true,
+                              formatter: (_val, opts) => {
+                                if (!opts) return "";
+                                const index = opts.dataPointIndex;
+                                const log = pingLogs.slice().reverse()[index];
+                                if (!log) return "";
+                                const date = new Date(log.checkedAt);
+                                return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${date.getSeconds().toString().padStart(2, "0")}`;
+                              },
+                            },
+                            y: {
+                              formatter: (val, opts) => {
+                                if (!opts) return `${val} ms`;
+                                const index = opts.dataPointIndex;
+                                const log = pingLogs.slice().reverse()[index];
+                                if (!log) return `${val} ms`;
+                                const status = log.isUp ? "Up" : "Down";
+                                return `${val} ms (${status})`;
+                              },
+                            },
+                          },
+                          markers: {
+                            size: 0,
+                            strokeWidth: 0,
+                            hover: {
+                              size: 5,
+                              sizeOffset: 3,
+                            },
+                          },
+                        }}
+                        series={[
+                          {
+                            name: "Latency",
+                            data: pingLogs
+                              .slice()
+                              .reverse()
+                              .map((log) => log.latencyMs ?? 0),
+                          },
+                        ]}
+                      />
+                    </div>
+                  ) : (
+                    <p className="sidebar-muted">Belum ada riwayat ping.</p>
+                  )}
                 </div>
-              </div>
+              ) : (
+                <div className="sidebar-monitoring">
+                  <Activity size={20} strokeWidth={2} aria-hidden="true" />
+                  <div>
+                    <strong>Belum dimonitor</strong>
+                    <span>Aktifkan monitoring lewat tombol Edit perangkat.</span>
+                  </div>
+                </div>
+              )}
             </section>
 
             <section className="sidebar-section" aria-label="Deskripsi">

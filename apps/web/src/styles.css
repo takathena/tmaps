@@ -133,6 +133,11 @@ textarea:focus-visible {
   font-size: 11px;
 }
 
+.leaflet-bottom.leaflet-right {
+  right: auto;
+  left: 0;
+}
+
 .leaflet-control-attribution a {
   color: var(--color-accent);
 }
@@ -303,7 +308,143 @@ textarea:focus-visible {
   position: absolute;
   top: 16px;
   right: 16px;
-  padding: 4px;
+  z-index: 25;
+}
+
+/* ---------- Notification Bell ---------- */
+
+.notification-bell {
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--color-error);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  max-height: 480px;
+  overflow: hidden;
+}
+
+.notification-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.notification-dropdown-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.notification-dropdown-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.notification-empty {
+  padding: 32px 16px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.notification-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.notification-item:hover {
+  background: var(--color-bg-secondary);
+}
+
+.notification-item[data-unread='true'] {
+  background: rgba(68, 101, 233, 0.04);
+}
+
+.notification-item[data-unread='true']:hover {
+  background: rgba(68, 101, 233, 0.08);
+}
+
+.notification-status-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+}
+
+.notification-status-dot[data-up='true'] {
+  background: var(--color-success);
+}
+
+.notification-status-dot[data-up='false'] {
+  background: var(--color-error);
+}
+
+.notification-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.notification-message {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+.notification-time {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .overlay-bottom-center {
@@ -1050,13 +1191,13 @@ textarea:focus-visible {
 
 .device-sidebar {
   position: absolute;
-  top: 76px;
+  top: 16px;
   right: 16px;
+  bottom: 16px;
   z-index: 24;
   display: flex;
   flex-direction: column;
   width: min(400px, calc(100vw - 32px));
-  max-height: calc(100vh - 92px);
   overflow: hidden;
   animation: sidebar-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -1287,6 +1428,54 @@ textarea:focus-visible {
   color: var(--color-text-secondary);
   font-size: 11px;
   line-height: 1.45;
+}
+
+.sidebar-monitoring-active {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebar-ping-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-ping-history strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.device-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.device-history::-webkit-scrollbar {
+  width: 6px;
+}
+
+.device-history::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
+}
+
+.device-history::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.device-history::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
 }
 
 .sidebar-description textarea {

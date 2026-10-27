@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { eq, and, lte, sql } from "drizzle-orm";
 import { db } from "../db/client.ts";
-import { devices, pingLogs, monitoringConfig } from "../db/schema.ts";
+import { devices, pingLogs, monitoringConfig, notifications, users } from "../db/schema.ts";
 import { env } from "../env.ts";
 
 type PingTarget = {
@@ -34,7 +34,7 @@ async function pingDevice(target: PingTarget): Promise<void> {
 
     // Update status device jika berubah
     const [current] = await db
-      .select({ status: devices.status })
+      .select({ status: devices.status, name: devices.name })
       .from(devices)
       .where(eq(devices.id, target.deviceId))
       .limit(1);
@@ -44,6 +44,21 @@ async function pingDevice(target: PingTarget): Promise<void> {
         .update(devices)
         .set({ status: newStatus })
         .where(eq(devices.id, target.deviceId));
+
+      // Create notifications untuk semua user
+      const allUsers = await db.select({ id: users.id }).from(users);
+      
+      const statusLabel = newStatus === "active" ? "kembali online" : "offline";
+      const message = `${current.name} ${statusLabel}`;
+
+      await db.insert(notifications).values(
+        allUsers.map((user) => ({
+          userId: user.id,
+          deviceId: target.deviceId,
+          isUp: newStatus === "active",
+          message,
+        }))
+      );
     }
 
     // Update next_check_at

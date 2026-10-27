@@ -1,5 +1,6 @@
 import { Cable, CircleAlert, Loader2, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import type { Map as LeafletMap } from "leaflet";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   api,
   errorMessage,
@@ -20,6 +21,7 @@ import {
 import { DeviceSidebar } from "./DeviceSidebar";
 import { MainMenu } from "./MainMenu";
 import { MapView } from "./MapView";
+import { NotificationBell } from "./NotificationBell";
 import { Toolbar, type ToolId } from "./Toolbar";
 
 type MapShellProps = {
@@ -84,6 +86,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
   const canWriteCables = Boolean(user.role.permissions.cables?.write);
   const canReadCables = Boolean(user.role.permissions.cables?.read);
 
+  const mapRef = useRef<LeafletMap | null>(null);
   const [activeTool, setActiveTool] = useState<ToolId>("select");
   const [catalogTab, setCatalogTab] = useState<CatalogTab | null>(null);
   const [devices, setDevices] = useState<DeviceSummary[]>([]);
@@ -100,6 +103,12 @@ export function MapShell({ user, onLogout }: MapShellProps) {
   const [cableMidpoints, setCableMidpoints] = useState<CablePathPoint[]>([]);
   const [cableDraft, setCableDraft] = useState<CableDraft | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filters, setFilters] = useState<Array<{ type: "deviceType" | "tag"; id: string; name: string }>>([]);
+  const [clusteringEnabled, setClusteringEnabled] = useState(() => {
+    const saved = localStorage.getItem("clusteringEnabled");
+    return saved === "true";
+  });
 
   const loadDevices = useCallback(async () => {
     setDevicesLoading(true);
@@ -136,6 +145,68 @@ export function MapShell({ user, onLogout }: MapShellProps) {
   useEffect(() => {
     void reloadMap();
   }, [reloadMap]);
+
+  // Polling status real-time
+  useEffect(() => {
+    const interval = Number(import.meta.env.VITE_STATUS_POLL_INTERVAL_MS) || 3000;
+    let timer: number | null = null;
+    let polling = false;
+
+    async function poll() {
+      if (polling) return;
+      polling = true;
+
+      try {
+        const response = await api.getDeviceStatuses();
+        const statusMap = new Map(response.devices.map((d) => [d.id, d.status]));
+        
+        setDevices((current) =>
+          current.map((device) => {
+            const newStatus = statusMap.get(device.id);
+            return newStatus && newStatus !== device.status
+              ? { ...device, status: newStatus }
+              : device;
+          }),
+        );
+      } catch {
+        // Polling gagal tidak mengganggu UI
+      } finally {
+        polling = false;
+      }
+    }
+
+    function startPolling() {
+      timer = window.setInterval(() => void poll(), interval);
+    }
+
+    function stopPolling() {
+      if (timer !== null) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        void poll();
+        startPolling();
+      }
+    }
+
+    if (!document.hidden) {
+      void poll();
+      startPolling();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!notice) return;
@@ -287,7 +358,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
       return;
     }
 
-    if (activeTool !== "select" || !canReadDevices) return;
+    if ((activeTool !== "select" && activeTool !== "pan") || !canReadDevices) return;
 
     setCatalogTab(null);
     setCreateLocation(null);
@@ -440,9 +511,32 @@ export function MapShell({ user, onLogout }: MapShellProps) {
         : "Klik perangkat awal untuk mulai menarik kabel."
       : null;
 
+  function handleNotificationClick(deviceId: string) {
+    const device = devices.find((d) => d.id === deviceId);
+    if (!device) return;
+
+    // Fly to device
+    if (mapRef.current) {
+      mapRef.current.flyTo([device.latitude, device.longitude], 16, {
+        duration: 1,
+      });
+    }
+
+    // Open sidebar
+    setActiveTool("select");
+    setCatalogTab(null);
+    setCreateLocation(null);
+    setEditing(null);
+    setEditingCable(null);
+    setCableDraft(null);
+    resetCableDrawing();
+    setSidebarId(deviceId);
+  }
+
   return (
     <div className="app-shell" data-tool={activeTool}>
       <MapView
+        mapRef={mapRef}
         activeTool={activeTool}
         devices={devices}
         cables={cables}
@@ -466,6 +560,10 @@ export function MapShell({ user, onLogout }: MapShellProps) {
           <Brand />
           <MainMenu onLogout={onLogout} onOpenCatalog={openCatalog} />
         </header>
+
+        <div className="overlay-top-right">
+          <NotificationBell onNotificationClick={handleNotificationClick} />
+        </div>
 
         {sidebarId && !editing ? (
           <DeviceSidebar

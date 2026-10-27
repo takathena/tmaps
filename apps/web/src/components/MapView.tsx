@@ -1,5 +1,5 @@
-import { divIcon, type Marker as LeafletMarker } from "leaflet";
-import { useEffect, useMemo, useRef } from "react";
+import { divIcon, type Marker as LeafletMarker, type Map as LeafletMap } from "leaflet";
+import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   CircleMarker,
@@ -8,6 +8,7 @@ import {
   Polyline,
   TileLayer,
   Tooltip,
+  useMap,
   useMapEvents,
 } from "react-leaflet";
 import type { CablePathPoint, CableSummary, DeviceSummary } from "../lib/api";
@@ -31,6 +32,7 @@ type PendingLocation = {
 };
 
 type MapViewProps = {
+  mapRef: MutableRefObject<LeafletMap | null>;
   activeTool: ToolId;
   devices: DeviceSummary[];
   cables: CableSummary[];
@@ -191,7 +193,18 @@ function CableLine({
   );
 }
 
+function MapRefSetter({ mapRef }: { mapRef: MutableRefObject<LeafletMap | null> }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    mapRef.current = map;
+  }, [map, mapRef]);
+
+  return null;
+}
+
 export function MapView({
+  mapRef,
   activeTool,
   devices,
   cables,
@@ -220,7 +233,8 @@ export function MapView({
 
   const selectEnabled = activeTool === "select";
   const cableDrawingEnabled = activeTool === "add-cable";
-  const markerSelectable = selectEnabled || cableDrawingEnabled;
+  const panEnabled = activeTool === "pan";
+  const markerSelectable = selectEnabled || cableDrawingEnabled || panEnabled;
   const mapClickEnabled = activeTool === "add-device" || cableDrawingEnabled;
 
   return (
@@ -232,6 +246,7 @@ export function MapView({
       zoomControl={false}
       className="map-canvas"
     >
+      <MapRefSetter mapRef={mapRef} />
       <TileLayer
         url={ESRI_SATELLITE_URL}
         attribution={ESRI_ATTRIBUTION}
