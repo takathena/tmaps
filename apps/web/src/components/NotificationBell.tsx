@@ -101,13 +101,13 @@ export function NotificationBell({ onNotificationClick }: NotificationBellProps)
     setOpen(false);
     onNotificationClick(notification.deviceId);
 
-    if (!notification.readAt) {
+    if (!notification.isRead) {
       try {
         await api.markNotificationRead(notification.id);
         setUnreadCount((c) => Math.max(0, c - 1));
         setNotifications((items) =>
           items.map((item) =>
-            item.id === notification.id ? { ...item, readAt: new Date().toISOString() } : item
+            item.id === notification.id ? { ...item, isRead: true } : item
           )
         );
       } catch (error) {
@@ -121,7 +121,7 @@ export function NotificationBell({ onNotificationClick }: NotificationBellProps)
       await api.markAllNotificationsRead();
       setUnreadCount(0);
       setNotifications((items) =>
-        items.map((item) => ({ ...item, readAt: item.readAt ?? new Date().toISOString() }))
+        items.map((item) => ({ ...item, isRead: true }))
       );
     } catch (error) {
       console.error("Mark all read failed:", errorMessage(error));
@@ -168,7 +168,7 @@ export function NotificationBell({ onNotificationClick }: NotificationBellProps)
                     <button
                       type="button"
                       className="notification-item"
-                      data-unread={!notification.readAt ? "true" : undefined}
+                      data-unread={!notification.isRead ? "true" : undefined}
                       onClick={() => void handleNotificationClick(notification)}
                     >
                       <span

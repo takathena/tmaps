@@ -1,9 +1,7 @@
-import { ilike, or, sql } from "drizzle-orm";
+import { ilike, or, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { z } from "zod";
 import { db } from "../db/client.ts";
-import { devices, deviceTypes, deviceModels, tags, deviceTags } from "../db/schema.ts";
-import { jsonBody } from "../lib/validation.ts";
+import { devices, deviceTypes, deviceModels, tags } from "../db/schema.ts";
 import { requireAuth } from "../middleware/auth.ts";
 import type { AppEnv } from "../types.ts";
 
@@ -34,8 +32,8 @@ searchRoutes.get("/", async (c) => {
       vendor: deviceModels.vendor,
     })
     .from(devices)
-    .innerJoin(deviceTypes, sql`${devices.deviceTypeId} = ${deviceTypes.id}`)
-    .innerJoin(deviceModels, sql`${devices.deviceModelId} = ${deviceModels.id}`)
+    .innerJoin(deviceModels, eq(devices.deviceModelId, deviceModels.id))
+    .innerJoin(deviceTypes, eq(deviceModels.deviceTypeId, deviceTypes.id))
     .where(
       or(
         ilike(devices.name, searchPattern),

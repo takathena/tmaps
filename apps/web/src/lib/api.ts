@@ -105,6 +105,7 @@ export type DeviceSummary = {
   deviceTypeId: string;
   typeName: string;
   icon: string;
+  tagIds: string[];
 };
 
 export type DeviceMonitoringConfig = {
@@ -134,11 +135,10 @@ export type PingLog = {
 
 export type Notification = {
   id: string;
-  userId: string;
   deviceId: string;
   isUp: boolean;
   message: string;
-  readAt: string | null;
+  isRead: boolean;
   createdAt: string;
 };
 
@@ -450,6 +450,8 @@ export const api = {
 
   search: (query: string) =>
     request<{ results: SearchResults }>(`/search?q=${encodeURIComponent(query)}`),
+
+  getTags: () => request<{ tags: DeviceTag[] }>("/tags"),
 
   getCables: () => request<{ cables: CableSummary[] }>("/cables"),
   getCable: (id: string) => request<{ cable: CableDetail }>(`/cables/${id}`),

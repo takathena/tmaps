@@ -1,6 +1,6 @@
 import { Cable, CircleAlert, Loader2, X } from "lucide-react";
 import type { Map as LeafletMap } from "leaflet";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
   errorMessage,
@@ -22,6 +22,8 @@ import { DeviceSidebar } from "./DeviceSidebar";
 import { MainMenu } from "./MainMenu";
 import { MapView } from "./MapView";
 import { NotificationBell } from "./NotificationBell";
+import { SearchPanel } from "./SearchPanel";
+import { FilterPanel } from "./FilterPanel";
 import { Toolbar, type ToolId } from "./Toolbar";
 
 type MapShellProps = {
@@ -57,6 +59,7 @@ function toSummary(device: DeviceDetail): DeviceSummary {
     deviceTypeId: device.deviceType.id,
     typeName: device.deviceType.name,
     icon: device.deviceType.icon,
+    tagIds: device.tags.map((t) => t.id),
   };
 }
 
@@ -104,6 +107,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
   const [cableDraft, setCableDraft] = useState<CableDraft | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState<Array<{ type: "deviceType" | "tag"; id: string; name: string }>>([]);
   const [clusteringEnabled, setClusteringEnabled] = useState(() => {
     const saved = localStorage.getItem("clusteringEnabled");
@@ -243,35 +247,6 @@ export function MapShell({ user, onLogout }: MapShellProps) {
     resetCableDrawing();
     setActiveTool("select");
     setCatalogTab(tab);
-  }
-
-  function handleToolSelect(tool: ToolId) {
-    if (tool === "add-cable" && !canWriteCables) {
-      setNotice("Anda tidak punya izin menambah kabel.");
-      setActiveTool("select");
-      return;
-    }
-
-    setActiveTool(tool);
-
-    if (tool !== "add-device") setCreateLocation(null);
-    if (tool !== "select") {
-      setEditing(null);
-      setEditingCable(null);
-      setSidebarId(null);
-    }
-    if (tool !== "add-cable") {
-      setCableDraft(null);
-      resetCableDrawing();
-    } else {
-      setCatalogTab(null);
-      setCreateLocation(null);
-      setEditing(null);
-      setSidebarId(null);
-      setEditingCable(null);
-      setCableDraft(null);
-      resetCableDrawing();
-    }
   }
 
   function handleMapClick(latitude: number, longitude: number) {
@@ -533,12 +508,105 @@ export function MapShell({ user, onLogout }: MapShellProps) {
     setSidebarId(deviceId);
   }
 
+  function handleToolSelect(tool: ToolId) {
+    if (tool === "search") {
+      setSearchOpen(!searchOpen);
+      return;
+    }
+
+    if (tool === "more") {
+      setFilterOpen(!filterOpen);
+      return;
+    }
+
+    if (tool === "clustering") {
+      const newValue = !clusteringEnabled;
+      setClusteringEnabled(newValue);
+      localStorage.setItem("clusteringEnabled", String(newValue));
+      return;
+    }
+
+    if (tool === "add-cable" && !canWriteCables) {
+      setNotice("Anda tidak punya izin menambah kabel.");
+      setActiveTool("select");
+      return;
+    }
+
+    setActiveTool(tool);
+
+    if (tool !== "add-device") setCreateLocation(null);
+    if (tool !== "select") {
+      setEditing(null);
+      setEditingCable(null);
+      setSidebarId(null);
+    }
+    if (tool !== "add-cable") {
+      setCableDraft(null);
+      resetCableDrawing();
+    } else {
+      setCatalogTab(null);
+      setCreateLocation(null);
+      setEditing(null);
+      setSidebarId(null);
+      setEditingCable(null);
+      setCableDraft(null);
+      resetCableDrawing();
+    }
+  }
+
+  function handleSearchDeviceSelect(deviceId: string) {
+    const device = devices.find((d) => d.id === deviceId);
+    if (!device) return;
+
+    if (mapRef.current) {
+      mapRef.current.flyTo([device.latitude, device.longitude], 16, {
+        duration: 1,
+      });
+    }
+
+    setSidebarId(deviceId);
+  }
+
+  function handleFilterAdd(type: "deviceType" | "tag", id: string, name: string) {
+    setFilters((current) => {
+      const exists = current.some((f) => f.type === type && f.id === id);
+      if (exists) return current;
+      return [...current, { type, id, name }];
+    });
+  }
+
+  function handleFilterRemove(type: "deviceType" | "tag", id: string) {
+    setFilters((current) => current.filter((f) => !(f.type === type && f.id === id)));
+  }
+
+  const filteredDevices = useMemo(() => {
+    if (filters.length === 0) return devices;
+
+    const typeFilters = filters.filter((f) => f.type === "deviceType").map((f) => f.id);
+    const tagFilters = filters.filter((f) => f.type === "tag").map((f) => f.id);
+
+    return devices.filter((device) => {
+      // AND logic: device must match all active filter types
+      if (typeFilters.length > 0 && !typeFilters.includes(device.deviceTypeId)) {
+        return false;
+      }
+
+      if (tagFilters.length > 0) {
+        // Device must have all active tags
+        const hasAllTags = tagFilters.every((tagId) => device.tagIds.includes(tagId));
+        if (!hasAllTags) return false;
+      }
+
+      return true;
+    });
+  }, [devices, filters]);
+
   return (
     <div className="app-shell" data-tool={activeTool}>
       <MapView
         mapRef={mapRef}
         activeTool={activeTool}
-        devices={devices}
+        devices={filteredDevices}
         cables={cables}
         selectedDeviceId={editingId ?? sidebarId}
         selectedCableId={editingCableId}
@@ -547,6 +615,7 @@ export function MapShell({ user, onLogout }: MapShellProps) {
         cableMidpoints={cableMidpoints}
         pendingLocation={createLocation}
         canMoveDevices={canWriteDevices}
+        clusteringEnabled={clusteringEnabled}
         onMapClick={handleMapClick}
         onDeviceSelect={handleDeviceSelect}
         onDeviceMove={(id, latitude, longitude) =>
@@ -564,6 +633,39 @@ export function MapShell({ user, onLogout }: MapShellProps) {
         <div className="overlay-top-right">
           <NotificationBell onNotificationClick={handleNotificationClick} />
         </div>
+
+        {searchOpen ? (
+          <SearchPanel
+            onDeviceSelect={handleSearchDeviceSelect}
+            onFilterAdd={handleFilterAdd}
+            onClose={() => setSearchOpen(false)}
+          />
+        ) : null}
+
+        {filterOpen ? (
+          <FilterPanel
+            activeFilters={filters}
+            onFilterAdd={handleFilterAdd}
+            onFilterRemove={handleFilterRemove}
+            onClose={() => setFilterOpen(false)}
+          />
+        ) : null}
+
+        {filters.length > 0 ? (
+          <div className="filter-chips overlay-top-center">
+            {filters.map((filter) => (
+              <button
+                key={`${filter.type}-${filter.id}`}
+                type="button"
+                className="filter-chip"
+                onClick={() => handleFilterRemove(filter.type, filter.id)}
+              >
+                <span>{filter.name}</span>
+                <X size={16} strokeWidth={2} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {sidebarId && !editing ? (
           <DeviceSidebar
@@ -673,7 +775,11 @@ export function MapShell({ user, onLogout }: MapShellProps) {
         {notice ? <MapToast message={notice} onClose={() => setNotice(null)} /> : null}
 
         <div className="overlay-bottom-center">
-          <Toolbar activeTool={activeTool} onSelect={handleToolSelect} />
+          <Toolbar
+            activeTool={activeTool}
+            clusteringEnabled={clusteringEnabled}
+            onSelect={handleToolSelect}
+          />
         </div>
       </div>
     </div>

@@ -11,6 +11,7 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import type { CablePathPoint, CableSummary, DeviceSummary } from "../lib/api";
 import { getDeviceIcon } from "../lib/device-icons";
 import { formatLength } from "../lib/geo";
@@ -43,6 +44,7 @@ type MapViewProps = {
   cableMidpoints: CablePathPoint[];
   pendingLocation: PendingLocation | null;
   canMoveDevices: boolean;
+  clusteringEnabled: boolean;
   onMapClick: (latitude: number, longitude: number) => void;
   onDeviceSelect: (id: string) => void;
   onDeviceMove: (id: string, latitude: number, longitude: number) => void;
@@ -215,6 +217,7 @@ export function MapView({
   cableMidpoints,
   pendingLocation,
   canMoveDevices,
+  clusteringEnabled,
   onMapClick,
   onDeviceSelect,
   onDeviceMove,
@@ -296,19 +299,37 @@ export function MapView({
         />
       ))}
 
-      {devices.map((device) => (
-        <DeviceMarker
-          key={device.id}
-          device={device}
-          selected={
-            device.id === selectedDeviceId || device.id === cableStartDeviceId
-          }
-          selectable={markerSelectable}
-          draggable={canMoveDevices && selectEnabled}
-          onSelect={onDeviceSelect}
-          onMove={onDeviceMove}
-        />
-      ))}
+      {clusteringEnabled ? (
+        <MarkerClusterGroup chunkedLoading>
+          {devices.map((device) => (
+            <DeviceMarker
+              key={device.id}
+              device={device}
+              selected={
+                device.id === selectedDeviceId || device.id === cableStartDeviceId
+              }
+              selectable={markerSelectable}
+              draggable={canMoveDevices && selectEnabled}
+              onSelect={onDeviceSelect}
+              onMove={onDeviceMove}
+            />
+          ))}
+        </MarkerClusterGroup>
+      ) : (
+        devices.map((device) => (
+          <DeviceMarker
+            key={device.id}
+            device={device}
+            selected={
+              device.id === selectedDeviceId || device.id === cableStartDeviceId
+            }
+            selectable={markerSelectable}
+            draggable={canMoveDevices && selectEnabled}
+            onSelect={onDeviceSelect}
+            onMove={onDeviceMove}
+          />
+        ))
+      )}
 
       {pendingLocation ? (
         <Marker

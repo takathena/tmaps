@@ -322,21 +322,17 @@ export const notifications = pgTable(
   "notifications",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
     deviceId: uuid("device_id")
       .notNull()
       .references(() => devices.id, { onDelete: "cascade" }),
     isUp: boolean("is_up").notNull(),
     message: text("message").notNull(),
-    readAt: timestamp("read_at", { withTimezone: true }),
+    isRead: boolean("is_read").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index("notifications_user_id_idx").on(table.userId),
     index("notifications_device_id_idx").on(table.deviceId),
-    index("notifications_user_read_created_idx").on(table.userId, table.readAt, table.createdAt),
+    index("notifications_read_created_idx").on(table.isRead, table.createdAt),
   ],
 );
 

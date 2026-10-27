@@ -12,6 +12,7 @@ import monitoringRoutes from "./routes/monitoring.ts";
 import notificationRoutes from "./routes/notifications.ts";
 import rolesRoutes from "./routes/roles.ts";
 import searchRoutes from "./routes/search.ts";
+import tagsRoutes from "./routes/tags.ts";
 import uploadsRoutes from "./routes/uploads.ts";
 import type { AppEnv } from "./types.ts";
 import { startMonitoring } from "./services/monitor.ts";
@@ -47,6 +48,7 @@ app.route("/cables", cablesRoutes);
 app.route("/uploads", uploadsRoutes);
 app.route("/notifications", notificationRoutes);
 app.route("/search", searchRoutes);
+app.route("/tags", tagsRoutes);
 app.route("/", monitoringRoutes);
 
 // Start monitoring scheduler

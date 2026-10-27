@@ -364,10 +364,13 @@ devicesRoutes.get("/", requirePermission("devices", "read"), async (c) => {
       deviceTypeId: deviceTypes.id,
       typeName: deviceTypes.name,
       icon: deviceTypes.icon,
+      tagIds: sql<string[]>`COALESCE(array_agg(DISTINCT ${deviceTags.tagId}) FILTER (WHERE ${deviceTags.tagId} IS NOT NULL), '{}')`,
     })
     .from(devices)
     .innerJoin(deviceModels, eq(devices.deviceModelId, deviceModels.id))
     .innerJoin(deviceTypes, eq(deviceModels.deviceTypeId, deviceTypes.id))
+    .leftJoin(deviceTags, eq(devices.id, deviceTags.deviceId))
+    .groupBy(devices.id, deviceTypes.id)
     .orderBy(devices.name);
 
   return c.json({ devices: rows });

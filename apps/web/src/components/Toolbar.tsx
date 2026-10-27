@@ -40,6 +40,7 @@ const MORE_TOOL: Tool = { id: "more", label: "More", icon: ChevronUp };
 
 type ToolbarProps = {
   activeTool: ToolId;
+  clusteringEnabled: boolean;
   onSelect: (tool: ToolId) => void;
 };
 
@@ -69,14 +70,14 @@ function ToolButton({
   );
 }
 
-export function Toolbar({ activeTool, onSelect }: ToolbarProps) {
+export function Toolbar({ activeTool, clusteringEnabled, onSelect }: ToolbarProps) {
   return (
     <div className="toolbar panel" role="toolbar" aria-label="Alat peta">
       {TOOLS.map((tool) => (
         <ToolButton
           key={tool.id}
           tool={tool}
-          active={activeTool === tool.id}
+          active={tool.id === "clustering" ? clusteringEnabled : activeTool === tool.id}
           onSelect={onSelect}
         />
       ))}
