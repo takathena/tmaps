@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { corsOrigins } from "./env.ts";
 import { errorHandler, notFoundHandler } from "./lib/error-handler.ts";
+import { cleanupExpired as cleanupRateLimits } from "./lib/rate-limiter.ts";
 import authRoutes from "./routes/auth.ts";
 import catalogRoutes from "./routes/catalog.ts";
 import cablesRoutes from "./routes/cables.ts";
@@ -53,5 +54,8 @@ app.route("/", monitoringRoutes);
 
 // Start monitoring scheduler
 startMonitoring();
+
+// Cleanup rate limiter expired entries tiap 10 menit
+setInterval(() => cleanupRateLimits(), 10 * 60 * 1000);
 
 export default app;

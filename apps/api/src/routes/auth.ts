@@ -15,6 +15,7 @@ import {
   setSessionCookie,
 } from "../lib/auth-cookie.ts";
 import { decryptTotpSecret, encryptTotpSecret } from "../lib/crypto.ts";
+import { isRateLimited, resetLimit } from "../lib/rate-limiter.ts";
 import { jsonBody } from "../lib/validation.ts";
 import { requireAuth } from "../middleware/auth.ts";
 import {
@@ -50,6 +51,16 @@ authRoutes.post("/login", jsonBody(loginSchema), async (c) => {
   const { email: rawEmail, password } = c.req.valid("json");
   const email = rawEmail.toLowerCase();
 
+  // Rate limit per IP
+  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || c.req.header("x-real-ip") || "unknown";
+  const loginKey = `login:${ip}`;
+  
+  if (isRateLimited(loginKey, env.RATE_LIMIT_LOGIN_MAX, env.RATE_LIMIT_LOGIN_WINDOW_MINUTES * 60 * 1000)) {
+    throw new HTTPException(429, { 
+      message: `Terlalu banyak percobaan login. Coba lagi dalam ${env.RATE_LIMIT_LOGIN_WINDOW_MINUTES} menit.` 
+    });
+  }
+
   const user = await findUserByEmail(email);
 
   // Pesan sengaja sama untuk email tidak ditemukan maupun password salah.
@@ -79,6 +90,9 @@ authRoutes.post("/login", jsonBody(loginSchema), async (c) => {
 
     return c.json({ status: needsSetup ? "2fa_setup_required" : "2fa_required" });
   }
+
+  // Login sukses tanpa 2FA: reset rate limit
+  resetLimit(loginKey);
 
   const session = await issueSession(user.id);
   setSessionCookie(c, session.token, session.expiresAt);
@@ -191,6 +205,16 @@ authRoutes.post("/2fa/verify", jsonBody(totpSchema), async (c) => {
   const { code } = c.req.valid("json");
   const pending = await requirePending(c, "2fa_login");
 
+  // Rate limit per IP untuk TOTP
+  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || c.req.header("x-real-ip") || "unknown";
+  const totpKey = `totp:${ip}`;
+  
+  if (isRateLimited(totpKey, env.RATE_LIMIT_TOTP_MAX, env.RATE_LIMIT_TOTP_WINDOW_MINUTES * 60 * 1000)) {
+    throw new HTTPException(429, { 
+      message: `Terlalu banyak percobaan kode 2FA. Coba lagi dalam ${env.RATE_LIMIT_TOTP_WINDOW_MINUTES} menit.` 
+    });
+  }
+
   if (!pending.twoFaEnabled || !pending.twoFaSecret) {
     throw new HTTPException(400, {
       message: "2FA belum aktif untuk akun ini. Silakan login ulang untuk setup.",
@@ -222,6 +246,8 @@ authRoutes.post("/2fa/verify", jsonBody(totpSchema), async (c) => {
     });
   }
 
+  // TOTP sukses: reset rate limit dan 2FA failures
+  resetLimit(totpKey);
   await resetTwoFaFailures(pending.userId);
   await deleteSessionById(pending.sessionId);
   clearPendingCookie(c);

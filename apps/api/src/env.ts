@@ -26,6 +26,12 @@ const envSchema = z.object({
   TWO_FA_LOCK_MINUTES: z.coerce.number().int().positive().default(15),
   TWO_FA_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
 
+  // Rate limit (Fase 3)
+  RATE_LIMIT_LOGIN_MAX: z.coerce.number().int().positive().default(5),
+  RATE_LIMIT_LOGIN_WINDOW_MINUTES: z.coerce.number().int().positive().default(5),
+  RATE_LIMIT_TOTP_MAX: z.coerce.number().int().positive().default(10),
+  RATE_LIMIT_TOTP_WINDOW_MINUTES: z.coerce.number().int().positive().default(5),
+
   // Keputusan #5: gambar disimpan di volume lokal, bukan object storage.
   // Di Docker Compose nilainya diarahkan ke /data/uploads (volume `uploads`).
   UPLOAD_DIR: z.string().trim().min(1).default("./storage/uploads"),
