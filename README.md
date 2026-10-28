@@ -212,9 +212,9 @@ Isi sidebar mengikuti flow #10:
 - **Informasi umum** — vendor, model, tipe, IP, status, dan tanggal instalasi.
 - **Kapasitas port** — PON untuk perangkat OLT, port untuk tipe lain, beserta
   nilai terpakai dan bar kapasitas.
-- **Monitoring** — Fase 2 selalu menampilkan **Belum dimonitor** karena mesin
-  ping baru aktif di Fase 3. Interval yang sudah disiapkan tetap ditampilkan
-  sebagai keterangan.
+- **Monitoring** — menampilkan status real-time (active/offline/unmonitored),
+  latency terakhir, dan waktu cek terakhir. Data diperbarui otomatis tiap
+  `VITE_STATUS_POLL_INTERVAL_MS` tanpa reload sidebar.
 - **Deskripsi** — dapat diubah langsung oleh Admin/Teknisi dan disimpan lewat
   `PATCH /devices/:id`. Viewer hanya melihat teks.
 - **Tag** — tambah lewat input bebas atau hapus lewat tombol pada chip. Tag baru
@@ -250,6 +250,32 @@ login dan permission `devices:read`, sehingga URL relatif di `image_url` tetap
 aman. Menghapus perangkat ikut menghapus baris `device_images` (cascade) dan file
 fisiknya dari volume. Viewer hanya melihat galeri; Admin dan Teknisi dapat
 mengunggah.
+
+## Endpoint Monitoring & Notifikasi (Fase 3)
+
+| Method | Path | Akses |
+|---|---|---|
+| GET | `/monitoring/status` | `monitoring:read` — status real-time semua device (1 query) |
+| GET | `/devices/:id/monitoring` | `monitoring:read` |
+| PUT | `/devices/:id/monitoring` | `monitoring:write` — `{ enabled, intervalSeconds }` |
+| GET | `/devices/:id/ping-logs` | `monitoring:read` — limit max 500 |
+| GET | `/notifications` | `notifications:read` — 100 terbaru |
+| GET | `/notifications/unread-count` | `notifications:read` |
+| POST | `/notifications/:id/read` | `notifications:write` |
+| POST | `/notifications/mark-all-read` | `notifications:write` |
+| GET | `/search?q=keyword` | `devices:read` — cari device, tipe, tag |
+
+Monitoring:
+- Scheduler ping berjalan tiap `PING_TICK_SECONDS` (default 5).
+- Threshold offline: `PING_FAIL_THRESHOLD` kegagalan berturut-turut (default 2).
+- Concurrency: max `PING_CONCURRENCY` ping paralel per tick (default 10).
+- Latency diambil dari output ping (`time=X ms`), bukan wall-clock.
+- Status `unmonitored` (abu-abu) saat monitoring dimatikan.
+- Notifikasi dibuat hanya untuk perubahan status nyata (tidak ada notif "kembali online" saat pengecekan pertama).
+
+Search:
+- Min 2 karakter, cari di nama device, IP, model, vendor, tipe, dan tag.
+- Device max 10, tipe max 5, tag max 5.
 
 ## Endpoint Perangkat (Fase 2)
 
@@ -411,7 +437,7 @@ sama.
 | # | Keputusan | Pilihan |
 |---|---|---|
 | 6 | Status baca notifikasi | **Global** (satu notifikasi, satu status baca). Siapa saja tandai dibaca, badge semua user berkurang. Skema `notifications` tanpa `userId`, pakai kolom `isRead` boolean. |
-| 7 | Retensi `ping_logs` | **30 hari** (nilai dari `PING_LOG_RETENTION_DAYS`). Job cleanup berjalan tiap tick scheduler, menghapus log lebih lama dari batas. |
+| 7 | Retensi `ping_logs` | **30 hari** (nilai dari `PING_LOG_RETENTION_DAYS`). Job cleanup berjalan **tiap jam**, menghapus log lebih lama dari batas. |
 
 Alasan notifikasi global: perubahan status perangkat (down/up) bersifat faktual dan
 berlaku untuk semua; tidak ada alasan untuk membuat duplikat per user. Badge

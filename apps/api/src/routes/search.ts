@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { db } from "../db/client.ts";
 import { devices, deviceTypes, deviceModels, tags } from "../db/schema.ts";
 import { requireAuth } from "../middleware/auth.ts";
+import { requirePermission } from "../middleware/permission.ts";
 import type { AppEnv } from "../types.ts";
 
 const searchRoutes = new Hono<AppEnv>();
@@ -10,7 +11,7 @@ const searchRoutes = new Hono<AppEnv>();
 searchRoutes.use("*", requireAuth);
 
 // GET /search?q=keyword
-searchRoutes.get("/", async (c) => {
+searchRoutes.get("/", requirePermission("devices", "read"), async (c) => {
   const query = c.req.query("q")?.trim();
   
   if (!query || query.length < 2) {

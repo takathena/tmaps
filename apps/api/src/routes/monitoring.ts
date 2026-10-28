@@ -10,6 +10,8 @@ import { requireAuth } from "../middleware/auth.ts";
 import { requirePermission } from "../middleware/permission.ts";
 import type { AppEnv } from "../types.ts";
 
+const uuidSchema = z.string().uuid();
+
 const monitoringRoutes = new Hono<AppEnv>();
 
 monitoringRoutes.use("*", requireAuth);
@@ -17,6 +19,11 @@ monitoringRoutes.use("*", requireAuth);
 // GET /devices/:id/monitoring
 monitoringRoutes.get("/devices/:id/monitoring", requirePermission("monitoring", "read"), async (c) => {
   const id = c.req.param("id");
+  
+  const parsed = uuidSchema.safeParse(id);
+  if (!parsed.success) {
+    throw new HTTPException(400, { message: "ID tidak valid." });
+  }
   
   const [config] = await db
     .select()
@@ -43,6 +50,12 @@ monitoringRoutes.put(
   jsonBody(updateMonitoringSchema),
   async (c) => {
     const id = c.req.param("id");
+    
+    const parsed = uuidSchema.safeParse(id);
+    if (!parsed.success) {
+      throw new HTTPException(400, { message: "ID tidak valid." });
+    }
+    
     const data = c.req.valid("json");
 
     // Cek device exist dan requiresIp
@@ -104,6 +117,12 @@ monitoringRoutes.put(
 // GET /devices/:id/ping-logs
 monitoringRoutes.get("/devices/:id/ping-logs", requirePermission("monitoring", "read"), async (c) => {
   const id = c.req.param("id");
+  
+  const parsed = uuidSchema.safeParse(id);
+  if (!parsed.success) {
+    throw new HTTPException(400, { message: "ID tidak valid." });
+  }
+  
   const limit = Math.min(Number(c.req.query("limit")) || 100, 500);
 
   const logs = await db
