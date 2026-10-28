@@ -13,6 +13,7 @@ export function jsonBody<T extends ZodType>(schema: T) {
         path: issue.path.join("."),
         message: issue.message,
       }));
+      console.error("Validation error:", JSON.stringify({ input: result.data, issues: details }, null, 2));
       return c.json(apiError("VALIDATION_ERROR", "Input tidak valid.", details), 400);
     }
   });

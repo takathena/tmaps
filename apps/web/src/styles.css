@@ -213,6 +213,49 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* ---------- Cluster marker ---------- */
+
+.cluster-marker-icon {
+  border: 0;
+  background: transparent;
+}
+
+.cluster-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(68, 101, 233, 0.4);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cluster-marker:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(68, 101, 233, 0.5);
+}
+
+.cluster-count {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
+.cluster-marker-icon:focus {
+  outline: none;
+}
+
+.cluster-marker-icon:focus-visible .cluster-marker {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .device-tooltip.leaflet-tooltip {
   display: flex;
   flex-direction: column;

@@ -300,7 +300,18 @@ export function MapView({
       ))}
 
       {clusteringEnabled ? (
-        <MarkerClusterGroup chunkedLoading>
+        <MarkerClusterGroup
+          chunkedLoading
+          iconCreateFunction={(cluster) => {
+            const count = cluster.getChildCount();
+            return divIcon({
+              className: "cluster-marker-icon",
+              html: `<div class="cluster-marker"><span class="cluster-count">${count}</span></div>`,
+              iconSize: [48, 48],
+              iconAnchor: [24, 24],
+            });
+          }}
+        >
           {devices.map((device) => (
             <DeviceMarker
               key={device.id}
