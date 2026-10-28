@@ -258,6 +258,28 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* ---------- Path point marker ---------- */
+
+.path-point-marker-icon {
+  border: 0;
+  background: transparent;
+  cursor: move;
+}
+
+.path-point-marker {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.path-point-marker:hover {
+  transform: scale(1.25);
+}
+
 .device-tooltip.leaflet-tooltip {
   display: flex;
   flex-direction: column;
@@ -1507,6 +1529,102 @@ textarea:focus-visible {
 .device-panel-body {
   padding: 16px;
   overflow-y: auto;
+}
+
+/* ---------- Cable Editor Panel ---------- */
+
+.cable-editor-panel {
+  position: absolute;
+  top: 76px;
+  left: 16px;
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - 92px);
+  overflow: hidden;
+}
+
+.cable-editor-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cable-editor-header h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.cable-editor-devices {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.cable-editor-body {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.cable-editor-hint {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: var(--radius-button);
+  background: var(--color-bg-secondary);
+  font-size: 13px;
+}
+
+.cable-editor-hint strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.cable-editor-hint ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.cable-editor-hint li {
+  margin: 4px 0;
+}
+
+.cable-editor-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.cable-editor-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: var(--radius-button);
+  background: var(--color-bg-secondary);
+  font-size: 13px;
+}
+
+.cable-editor-stat-label {
+  color: var(--color-text-secondary);
+}
+
+.cable-editor-stat-value {
+  font-weight: 500;
+}
+
+.cable-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid var(--color-border);
 }
 
 /* ---------- Sidebar detail perangkat ---------- */

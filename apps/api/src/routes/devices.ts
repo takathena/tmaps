@@ -743,36 +743,24 @@ devicesRoutes.patch(
       }
 
       if (moved) {
-        // Ujung kabel mengikuti perangkat saat marker dipindahkan.
-        // Panjang direcalculate dari path yang baru.
+        // Saat device dipindahkan, kabel yang terhubung perlu diupdate panjangnya.
+        // Path tidak diubah - user harus manually edit/redraw cable kalau mau adjust jalur.
         const connected = await tx
           .select({
             id: cables.id,
-            deviceFromId: cables.deviceFromId,
-            deviceToId: cables.deviceToId,
             path: cables.path,
           })
           .from(cables)
           .where(or(eq(cables.deviceFromId, id), eq(cables.deviceToId, id)));
 
         for (const cable of connected) {
-          if (cable.path.length < 2) continue;
-
-          const path = [...cable.path];
-          if (cable.deviceFromId === id) {
-            path[0] = { lat: nextLatitude, lng: nextLongitude };
-          }
-          if (cable.deviceToId === id) {
-            path[path.length - 1] = { lat: nextLatitude, lng: nextLongitude };
-          }
-
-          // Recalculate length dari path yang baru
+          // Recalculate length dari path yang ada (tidak ubah path)
           const { pathLengthMeters, roundLengthMeters } = await import("../lib/cable-rules.ts");
-          const newLength = roundLengthMeters(pathLengthMeters(path));
+          const newLength = roundLengthMeters(pathLengthMeters(cable.path));
 
           await tx
             .update(cables)
-            .set({ path, length: newLength, updatedAt: new Date() })
+            .set({ length: newLength, updatedAt: new Date() })
             .where(eq(cables.id, cable.id));
         }
       }

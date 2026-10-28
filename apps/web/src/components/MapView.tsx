@@ -39,6 +39,7 @@ type MapViewProps = {
   cables: CableSummary[];
   selectedDeviceId: string | null;
   selectedCableId: string | null;
+  editingCableId: string | null;
   cableStartDeviceId: string | null;
   cablePreviewPath: CablePathPoint[];
   cableMidpoints: CablePathPoint[];
@@ -49,6 +50,7 @@ type MapViewProps = {
   onDeviceSelect: (id: string) => void;
   onDeviceMove: (id: string, latitude: number, longitude: number) => void;
   onCableSelect: (id: string) => void;
+  onCablePathPointMove: (cableId: string, index: number, lat: number, lng: number) => void;
 };
 
 function MapClickHandler({
@@ -144,14 +146,29 @@ function CableLine({
   cable,
   selected,
   interactive,
+  editing,
   onSelect,
+  onPathPointMove,
 }: {
   cable: CableSummary;
   selected: boolean;
   interactive: boolean;
+  editing: boolean;
   onSelect: (id: string) => void;
+  onPathPointMove?: (cableId: string, index: number, lat: number, lng: number) => void;
 }) {
   const positions = cable.path.map((point) => [point.lat, point.lng] as [number, number]);
+  
+  const pathPointIcon = useMemo(
+    () =>
+      divIcon({
+        className: "path-point-marker-icon",
+        html: '<div class="path-point-marker"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      }),
+    [],
+  );
 
   return (
     <>
@@ -191,6 +208,31 @@ function CableLine({
           </span>
         </Tooltip>
       </Polyline>
+      
+      {editing && onPathPointMove ? (
+        <>
+          {cable.path.map((point, index) => (
+            <Marker
+              key={`${cable.id}-point-${index}`}
+              position={[point.lat, point.lng]}
+              icon={pathPointIcon}
+              draggable={true}
+              bubblingMouseEvents={false}
+              eventHandlers={{
+                dragend: (event) => {
+                  const marker = event.target as LeafletMarker;
+                  const pos = marker.getLatLng();
+                  onPathPointMove(cable.id, index, pos.lat, pos.lng);
+                },
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -8]} opacity={1}>
+                Titik {index + 1}
+              </Tooltip>
+            </Marker>
+          ))}
+        </>
+      ) : null}
     </>
   );
 }
@@ -212,6 +254,7 @@ export function MapView({
   cables,
   selectedDeviceId,
   selectedCableId,
+  editingCableId,
   cableStartDeviceId,
   cablePreviewPath,
   cableMidpoints,
@@ -222,6 +265,7 @@ export function MapView({
   onDeviceSelect,
   onDeviceMove,
   onCableSelect,
+  onCablePathPointMove,
 }: MapViewProps) {
   const pendingIcon = useMemo(
     () =>
@@ -263,8 +307,10 @@ export function MapView({
           key={cable.id}
           cable={cable}
           selected={cable.id === selectedCableId}
+          editing={cable.id === editingCableId}
           interactive={selectEnabled}
           onSelect={onCableSelect}
+          onPathPointMove={onCablePathPointMove}
         />
       ))}
 
