@@ -743,8 +743,8 @@ devicesRoutes.patch(
       }
 
       if (moved) {
-        // Ujung kabel mengikuti perangkat saat marker dipindahkan. Panjang
-        // yang tersimpan tidak diubah agar override manual tetap dihormati.
+        // Ujung kabel mengikuti perangkat saat marker dipindahkan.
+        // Panjang direcalculate dari path yang baru.
         const connected = await tx
           .select({
             id: cables.id,
@@ -766,9 +766,13 @@ devicesRoutes.patch(
             path[path.length - 1] = { lat: nextLatitude, lng: nextLongitude };
           }
 
+          // Recalculate length dari path yang baru
+          const { pathLengthMeters, roundLengthMeters } = await import("../lib/cable-rules.ts");
+          const newLength = roundLengthMeters(pathLengthMeters(path));
+
           await tx
             .update(cables)
-            .set({ path, updatedAt: new Date() })
+            .set({ path, length: newLength, updatedAt: new Date() })
             .where(eq(cables.id, cable.id));
         }
       }
