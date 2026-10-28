@@ -4,6 +4,8 @@
   --font-sans: 'DM Sans', system-ui, sans-serif;
 
   --color-bg-panel: #ffffff;
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8f9fa;
   --color-bg-canvas: #f8f9fa;
   --color-border: #e9ecef;
   --color-text-primary: #1d1d1d;
@@ -733,7 +735,7 @@ textarea:focus-visible {
   gap: 8px;
   padding: 12px;
   border-radius: var(--radius-panel);
-  background: var(--color-bg-primary);
+  background: var(--color-bg-panel);
   box-shadow: var(--shadow-panel);
   pointer-events: auto;
 }
