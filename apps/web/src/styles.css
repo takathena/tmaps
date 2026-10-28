@@ -836,6 +836,9 @@ textarea:focus-visible {
   z-index: 30;
   width: 240px;
   padding: 4px;
+  background: var(--color-bg-panel);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
 }
 
 .menu-item {
