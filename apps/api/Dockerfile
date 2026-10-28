@@ -17,6 +17,8 @@ COPY apps/api ./apps/api
 
 WORKDIR /app/apps/api
 
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 3000
 
-CMD ["bun", "src/index.ts"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
