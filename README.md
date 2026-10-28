@@ -194,8 +194,11 @@ meminta tipe kabel, core terpakai, dan panjang.
 - Klik polyline membuka panel detail/edit/hapus. Viewer hanya dapat melihat
   detail (field nonaktif, tanpa tombol simpan/hapus); Admin dan Teknisi dapat
   mengubah serta menghapus kabel.
-- Memindahkan marker perangkat ikut menggeser ujung path kabel yang terhubung.
-  Panjang yang tersimpan (termasuk override manual) tidak diubah otomatis.
+- **Path preservation**: Memindahkan marker perangkat **tidak** mengubah path kabel
+  untuk menghindari bug jalur jadi lurus. Panjang di-recalculate otomatis. User
+  harus edit path manual lewat panel kabel bila device bergeser jauh.
+- **Cable path editor** (WIP): Fitur drag-and-drop untuk edit titik path sedang
+  dikembangkan. Backend sudah support `PATCH /cables/:id` dengan field `path`.
 - Menghapus perangkat yang masih terhubung kabel **diblokir 409** dengan pesan
   jumlah kabel. Ini keputusan final untuk v1: hapus kabel lebih dulu, bukan
   cascade.
@@ -345,9 +348,10 @@ Field create/update: `cableTypeId`, `deviceFromId`, `deviceToId`, `path`,
 - Bila `length` tidak dikirim saat create — atau `path` diubah tanpa `length`
   saat update — panjang dihitung geodesik per segmen (haversine) dan dibulatkan
   ke sentimeter. `length` manual yang dikirim selalu dipertahankan.
-- Saat perangkat dipindahkan lewat `PATCH /devices/:id`, titik pertama/terakhir
-  path kabel yang terhubung diperbarui dalam transaksi yang sama. `length`
-  tersimpan tidak diubah agar override manual tetap dihormati.
+- Saat perangkat dipindahkan lewat `PATCH /devices/:id`, path kabel **tidak diubah**
+  untuk menghindari bug jalur jadi lurus. Panjang kabel di-recalculate otomatis.
+  User harus manually edit path kabel lewat `PATCH /cables/:id` bila device bergeser
+  jauh dari endpoint.
 - Menghapus kabel hanya menghapus baris kabel; perangkat tetap ada.
 
 ## 2FA
