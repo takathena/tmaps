@@ -631,6 +631,9 @@ textarea:focus-visible {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--color-bg-panel);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
 }
 
 .filter-panel-header {
