@@ -37,14 +37,28 @@ export function NotificationBell({ open, unreadCount, onOpenChange, onUnreadCoun
   // Close dropdown saat klik di luar
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+      
+      // Ignore clicks on notification bell button itself
+      if (target.closest('[aria-label="Notifikasi"]')) {
+        return;
+      }
+      
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         onOpenChange(false);
       }
     }
 
     if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      // Use setTimeout to avoid immediate close on button click
+      const timeoutId = setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+      }, 0);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
     }
   }, [open, onOpenChange]);
 
