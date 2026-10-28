@@ -39,6 +39,7 @@ const envSchema = z.object({
   PING_TICK_SECONDS: z.coerce.number().positive().default(5),
   PING_TIMEOUT_MS: z.coerce.number().positive().default(2000),
   PING_CONCURRENCY: z.coerce.number().positive().default(10),
+  PING_FAIL_THRESHOLD: z.coerce.number().int().positive().default(2),
   PING_LOG_RETENTION_DAYS: z.coerce.number().positive().default(30),
 });
 

@@ -183,6 +183,64 @@ export function DeviceSidebar({
     void loadPingLogs();
   }, [loadDevice, loadLogs, loadPingLogs]);
 
+  // Polling status dan ping logs untuk sidebar live update
+  useEffect(() => {
+    const interval = Number(import.meta.env.VITE_STATUS_POLL_INTERVAL_MS) || 3000;
+    let timer: number | null = null;
+
+    async function poll() {
+      if (!device) return;
+      try {
+        const response = await api.getDevice(deviceId);
+        setDevice((current) => {
+          if (!current) return response.device;
+          // Update hanya status, latency, dan checked_at tanpa menimpa form input
+          return {
+            ...current,
+            status: response.device.status,
+            updatedAt: response.device.updatedAt,
+          };
+        });
+        // Reload ping logs
+        const pingResponse = await api.getDevicePingLogs(deviceId, 10);
+        setPingLogs(pingResponse.logs);
+      } catch {
+        // Silent fail
+      }
+    }
+
+    function startPolling() {
+      timer = window.setInterval(() => void poll(), interval);
+    }
+
+    function stopPolling() {
+      if (timer !== null) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        void poll();
+        startPolling();
+      }
+    }
+
+    if (!document.hidden && device) {
+      startPolling();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [deviceId, device]);
+
   useEffect(() => {
     if (!descriptionSaved) return;
     const timeout = window.setTimeout(() => setDescriptionSaved(false), 3000);

@@ -247,6 +247,7 @@ export const monitoringConfig = pgTable(
       .references(() => devices.id, { onDelete: "cascade" }),
     enabled: boolean("enabled").notNull().default(false),
     intervalSeconds: integer("interval_seconds").notNull().default(60),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
     nextCheckAt: timestamp("next_check_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -254,6 +255,7 @@ export const monitoringConfig = pgTable(
   (table) => [
     index("monitoring_config_due_idx").on(table.enabled, table.nextCheckAt),
     check("monitoring_config_interval_positive", sql`${table.intervalSeconds} > 0`),
+    check("monitoring_config_failures_non_negative", sql`${table.consecutiveFailures} >= 0`),
   ],
 );
 

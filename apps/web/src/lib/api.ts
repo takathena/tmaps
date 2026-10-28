@@ -431,7 +431,7 @@ export const api = {
   deleteDevice: (id: string) => request<void>(`/devices/${id}`, { method: "DELETE" }),
   
   getDeviceStatuses: () =>
-    request<{ status: string; devices: DevicePingStatus[]; timestamp: string }>("/health/status"),
+    request<{ status: string; devices: DevicePingStatus[]; timestamp: string }>("/monitoring/status"),
 
   getDevicePingLogs: (id: string, limit = 50) =>
     request<{ logs: PingLog[] }>(`/devices/${id}/ping-logs?limit=${limit}`),

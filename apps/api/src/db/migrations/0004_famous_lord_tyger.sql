@@ -1,0 +1,2 @@
+ALTER TABLE "monitoring_config" ADD COLUMN "consecutive_failures" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "monitoring_config" ADD CONSTRAINT "monitoring_config_failures_non_negative" CHECK ("monitoring_config"."consecutive_failures" >= 0);
